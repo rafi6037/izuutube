@@ -67,13 +67,18 @@ def normalize_cookies_content(raw_content):
                 continue
             domain = str(cookie.get("domain", "")).strip()
             name = str(cookie.get("name", "")).strip()
+            # Preserve cookie value exactly as provided (whitespace can be significant).
             value = str(cookie.get("value", ""))
             if not domain or not name:
                 continue
             include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
             path = str(cookie.get("path", "/") or "/")
             secure = "TRUE" if cookie.get("secure") else "FALSE"
-            expiry = cookie.get("expiry") or cookie.get("expires") or 0
+            expiry = cookie.get("expiry")
+            if expiry is None:
+                expiry = cookie.get("expires")
+            if expiry is None:
+                expiry = 0
             try:
                 expiry = int(expiry)
             except (TypeError, ValueError):
