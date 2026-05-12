@@ -74,8 +74,8 @@ def is_valid_https_url(url):
     return parsed.scheme == "https" and bool(parsed.netloc)
 
 
-def find_https_download_link(payload, *, seen=None, depth=0, max_depth=MAX_RESPONSE_PARSE_DEPTH):
-    if depth > max_depth:
+def find_https_download_link(payload, *, seen=None, depth=0, depth_limit=MAX_RESPONSE_PARSE_DEPTH):
+    if depth > depth_limit:
         return None
 
     if seen is None:
@@ -98,7 +98,7 @@ def find_https_download_link(payload, *, seen=None, depth=0, max_depth=MAX_RESPO
             if isinstance(value, str) and is_valid_https_url(value):
                 return value
         for value in payload.values():
-            found = find_https_download_link(value, seen=seen, depth=depth + 1, max_depth=max_depth)
+            found = find_https_download_link(value, seen=seen, depth=depth + 1, depth_limit=depth_limit)
             if found:
                 return found
         return None
@@ -110,7 +110,7 @@ def find_https_download_link(payload, *, seen=None, depth=0, max_depth=MAX_RESPO
         seen.add(obj_id)
 
         for item in payload:
-            found = find_https_download_link(item, seen=seen, depth=depth + 1, max_depth=max_depth)
+            found = find_https_download_link(item, seen=seen, depth=depth + 1, depth_limit=depth_limit)
             if found:
                 return found
     return None
