@@ -95,17 +95,21 @@ def get_info():
                 "formats":   formats,
             })
     except yt_dlp.utils.DownloadError as e:
-        err = str(e).lower()
-        needs_fallback = "sign in to confirm you're not a bot" in err or "sign in to confirm you’re not a bot" in err
+        err = str(e)
+        err_lower = err.lower()
+        needs_fallback = "sign in to confirm" in err_lower and "not a bot" in err_lower
         if not needs_fallback:
-            return jsonify({"error": str(e)}), 400
+            logger.warning("[IzuTube] yt-dlp metadata fetch failed: %s", e)
+            return jsonify({"error": "Failed to fetch video info"}), 400
         try:
             info = get_basic_youtube_info(url)
             return jsonify({**info, "formats": formats})
-        except Exception:
-            return jsonify({"error": str(e)}), 400
+        except requests.RequestException as fallback_error:
+            logger.warning("[IzuTube] oEmbed fallback failed: %s", fallback_error)
+            return jsonify({"error": "Failed to fetch video info. Add COOKIES_CONTENT for restricted videos."}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.exception("[IzuTube] Unexpected error while fetching metadata")
+        return jsonify({"error": "Failed to fetch video info"}), 500
 
 
 @app.route("/api/download", methods=["POST"])
