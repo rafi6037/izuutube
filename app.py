@@ -1,7 +1,10 @@
 import os
+import threading
+import time
 import requests
 import yt_dlp
-from flask import Flask, request, jsonify
+from pathlib import Path
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -122,7 +125,6 @@ def download():
             if items:
                 return jsonify({"url": items[0].get("url")})
 
-        # cobalt failed — fall through to yt-dlp
         print(f"[IzuTube] cobalt returned status={status}, falling back to yt-dlp")
 
     except Exception as e:
@@ -133,10 +135,6 @@ def download():
         return jsonify({"error": "Download failed. Please add COOKIES_CONTENT to Railway environment variables."}), 500
 
     try:
-        import tempfile, threading, time
-        from flask import send_file
-        from pathlib import Path
-
         out_dir = Path(f"/tmp/izutube_{os.urandom(4).hex()}")
         out_dir.mkdir(exist_ok=True)
 
@@ -151,8 +149,14 @@ def download():
                 }],
             })
         else:
+            # Flexible format: try exact height, fall back to best available
             ydl_opts = get_ydl_opts({
-                "format": f"bestvideo[height<={quality}]+bestaudio/best",
+                "format": (
+                    f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
+                    f"bestvideo[height<={quality}]+bestaudio/"
+                    f"best[height<={quality}]/"
+                    f"bestvideo+bestaudio/best"
+                ),
                 "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
                 "merge_output_format": "mp4",
             })
