@@ -66,43 +66,51 @@ def get_basic_youtube_info(url):
     }
 
 
-def find_https_download_link(payload, *, _seen=None, _depth=0, _max_depth=MAX_RESPONSE_PARSE_DEPTH):
-    if _depth > _max_depth:
+def is_valid_https_url(url):
+    try:
+        parsed = urlparse(url.strip())
+    except Exception:
+        return False
+    return parsed.scheme == "https" and bool(parsed.netloc)
+
+
+def find_https_download_link(payload, *, seen=None, depth=0, max_depth=MAX_RESPONSE_PARSE_DEPTH):
+    if depth > max_depth:
         return None
 
-    if _seen is None:
-        _seen = set()
+    if seen is None:
+        seen = set()
 
     if isinstance(payload, str):
         value = payload.strip()
-        if value.startswith("https://"):
+        if is_valid_https_url(value):
             return value
         return None
 
     if isinstance(payload, dict):
         obj_id = id(payload)
-        if obj_id in _seen:
+        if obj_id in seen:
             return None
-        _seen.add(obj_id)
+        seen.add(obj_id)
 
         for key in DOWNLOAD_URL_KEYS:
             value = payload.get(key)
-            if isinstance(value, str) and value.startswith("https://"):
+            if isinstance(value, str) and is_valid_https_url(value):
                 return value
         for value in payload.values():
-            found = find_https_download_link(value, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
+            found = find_https_download_link(value, seen=seen, depth=depth + 1, max_depth=max_depth)
             if found:
                 return found
         return None
 
     if isinstance(payload, list):
         obj_id = id(payload)
-        if obj_id in _seen:
+        if obj_id in seen:
             return None
-        _seen.add(obj_id)
+        seen.add(obj_id)
 
         for item in payload:
-            found = find_https_download_link(item, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
+            found = find_https_download_link(item, seen=seen, depth=depth + 1, max_depth=max_depth)
             if found:
                 return found
     return None
@@ -154,7 +162,7 @@ def download():
         res.raise_for_status()
 
         content_type = res.headers.get("Content-Type", "").lower()
-        if "application/json" in content_type:
+        if content_type.startswith("application/json"):
             payload = res.json()
             download_url = find_https_download_link(payload)
             if download_url:
@@ -163,7 +171,7 @@ def download():
             return jsonify({"error": message or "Failed to get MP3 download link"}), 502
 
         text = res.text.strip()
-        if text.startswith("https://"):
+        if is_valid_https_url(text):
             return jsonify({"url": text})
         return jsonify({"error": "Unexpected response from MP3 provider"}), 502
     except requests.RequestException as e:
