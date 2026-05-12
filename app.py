@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import shutil
 import threading
@@ -31,23 +32,85 @@ if FFMPEG_LOCATION:
 else:
     print("[IzuTube] WARNING: ffmpeg not found in PATH — audio conversion and video merging will be unavailable")
 
+def normalize_cookies_content(raw_content):
+    if not raw_content:
+        return None
+
+    content = raw_content.strip()
+    if not content:
+        return None
+
+    # Common env-var formatting issues (escaped newlines and CRLF)
+    content = content.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
+
+    # Support JSON exports (array of cookies or object with `cookies` key)
+    parsed = None
+    if content.startswith("{") or content.startswith("["):
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            parsed = None
+
+    if parsed is not None:
+        cookies = []
+        if isinstance(parsed, list):
+            cookies = parsed
+        elif isinstance(parsed, dict):
+            if isinstance(parsed.get("cookies"), list):
+                cookies = parsed["cookies"]
+            elif {"domain", "name", "value"}.issubset(parsed.keys()):
+                cookies = [parsed]
+
+        lines = []
+        for cookie in cookies:
+            if not isinstance(cookie, dict):
+                continue
+            domain = str(cookie.get("domain", "")).strip()
+            name = str(cookie.get("name", "")).strip()
+            value = str(cookie.get("value", ""))
+            if not domain or not name:
+                continue
+            include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
+            path = str(cookie.get("path", "/") or "/")
+            secure = "TRUE" if cookie.get("secure") else "FALSE"
+            expiry = cookie.get("expiry") or cookie.get("expires") or 0
+            try:
+                expiry = int(expiry)
+            except (TypeError, ValueError):
+                expiry = 0
+            lines.append(
+                f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}"
+            )
+
+        if not lines:
+            return None
+        return "# Netscape HTTP Cookie File\n" + "\n".join(lines) + "\n"
+
+    # Assume plain Netscape format (prepend header if missing)
+    if not content.startswith("# Netscape HTTP Cookie File"):
+        content = "# Netscape HTTP Cookie File\n" + content
+    if not content.endswith("\n"):
+        content += "\n"
+    return content
+
+
 # Write cookies from environment variable to a temp file at startup
-cookies_content = os.environ.get("COOKIES_CONTENT", "").strip()
+cookies_content = normalize_cookies_content(os.environ.get("COOKIES_CONTENT", ""))
 if cookies_content:
-    cookies_content = cookies_content.replace("\\n", "\n")
     COOKIES_FILE = "/tmp/yt_cookies.txt"
     with open(COOKIES_FILE, "w") as f:
         f.write(cookies_content)
+    os.chmod(COOKIES_FILE, 0o600)
     print("[IzuTube] Cookies loaded from environment variable ✓")
 else:
-    print("[IzuTube] No cookies found — running without authentication")
+    print("[IzuTube] No valid cookies found — running without authentication")
 
 
 def get_ydl_opts(extra=None):
     opts = {
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"skip": ["dash", "hls"]}},
+        "extractor_args": {"youtube": {"skip": ["dash", "hls"], "player_client": ["android", "web"]}},
     }
     if COOKIES_FILE:
         opts["cookiefile"] = COOKIES_FILE
