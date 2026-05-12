@@ -1,4 +1,5 @@
 import os
+import logging
 import threading
 import time
 import requests
@@ -9,6 +10,7 @@ from flask_cors import CORS
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
+logger = logging.getLogger(__name__)
 
 COBALT_API = "https://api.cobalt.tools/"
 COOKIES_FILE = None
@@ -142,20 +144,47 @@ def download():
                     "preferredquality": "320",
                 }],
             })
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
         else:
-            ydl_opts = get_ydl_opts({
-                "format": (
+            format_candidates = [
+                (
                     f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
                     f"bestvideo[height<={quality}]+bestaudio/"
                     f"best[height<={quality}]/"
                     f"bestvideo+bestaudio/best"
                 ),
-                "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                "merge_output_format": "mp4",
-            })
+                (
+                    f"bestvideo[height<={quality}]+bestaudio/"
+                    f"best[height<={quality}]/"
+                    "bestvideo+bestaudio/best"
+                ),
+                "bestvideo+bestaudio/best",
+                "best",
+            ]
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            for attempt_index, format_candidate in enumerate(format_candidates):
+                ydl_opts = get_ydl_opts({
+                    "format": format_candidate,
+                    "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
+                    "merge_output_format": "mp4",
+                })
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([url])
+                    break
+                except yt_dlp.utils.DownloadError as e:
+                    is_last = attempt_index == len(format_candidates) - 1
+                    if not is_last:
+                        logger.warning(
+                            "[IzuTube] yt-dlp format attempt failed, retrying with fallback (%s/%s): %s",
+                            attempt_index + 1,
+                            len(format_candidates),
+                            e,
+                        )
+                        continue
+                    raise
 
         files = list(out_dir.iterdir())
         if not files:
