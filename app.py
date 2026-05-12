@@ -1,4 +1,5 @@
 import os
+import logging
 import threading
 import time
 import requests
@@ -9,6 +10,7 @@ from flask_cors import CORS
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
+logger = logging.getLogger(__name__)
 
 COBALT_API = "https://api.cobalt.tools/"
 COOKIES_FILE = None
@@ -178,10 +180,15 @@ def download():
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([url])
                     break
-                except yt_dlp.utils.DownloadError:
+                except yt_dlp.utils.DownloadError as e:
                     is_last = candidate_index == len(format_candidates) - 1
-                    if not is_last:
-                        print(f"[IzuTube] yt-dlp format attempt failed, retrying with fallback ({candidate_index + 1}/{len(format_candidates)})")
+                    is_format_unavailable = "requested format is not available" in str(e).lower()
+                    if is_format_unavailable and not is_last:
+                        logger.warning(
+                            "[IzuTube] yt-dlp format attempt failed, retrying with fallback (%s/%s)",
+                            candidate_index + 1,
+                            len(format_candidates),
+                        )
                         continue
                     raise
 
