@@ -21,6 +21,17 @@ YOUTUBE_HOSTS = {
     "youtu.be",
     "www.youtu.be",
 }
+DOWNLOAD_URL_KEYS = (
+    "url",
+    "link",
+    "download",
+    "download_url",
+    "downloadUrl",
+    "file",
+    "file_url",
+    "fileUrl",
+)
+MAX_RESPONSE_PARSE_DEPTH = 5
 
 
 def is_valid_youtube_url(url):
@@ -55,7 +66,7 @@ def get_basic_youtube_info(url):
     }
 
 
-def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=5):
+def find_https_download_link(payload, *, _seen=None, _depth=0, _max_depth=MAX_RESPONSE_PARSE_DEPTH):
     if _depth > _max_depth:
         return None
 
@@ -74,12 +85,12 @@ def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=5):
             return None
         _seen.add(obj_id)
 
-        for key in ("url", "link", "download", "download_url", "downloadUrl", "file", "file_url", "fileUrl"):
+        for key in DOWNLOAD_URL_KEYS:
             value = payload.get(key)
             if isinstance(value, str) and value.startswith("https://"):
                 return value
         for value in payload.values():
-            found = extract_remote_url(value, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
+            found = find_https_download_link(value, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
             if found:
                 return found
         return None
@@ -91,7 +102,7 @@ def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=5):
         _seen.add(obj_id)
 
         for item in payload:
-            found = extract_remote_url(item, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
+            found = find_https_download_link(item, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
             if found:
                 return found
     return None
@@ -145,7 +156,7 @@ def download():
         content_type = res.headers.get("Content-Type", "").lower()
         if "application/json" in content_type:
             payload = res.json()
-            download_url = extract_remote_url(payload)
+            download_url = find_https_download_link(payload)
             if download_url:
                 return jsonify({"url": download_url})
             message = payload.get("error") if isinstance(payload, dict) else None
