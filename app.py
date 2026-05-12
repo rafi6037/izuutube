@@ -244,40 +244,47 @@ def download():
 
         if is_audio:
             ydl_opts = get_ydl_opts({
-                "format": "bestaudio/best",
+                "format": "bestaudio[ext=m4a]/bestaudio/best",
                 "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                "postprocessors": [{
+            })
+            if FFMPEG_LOCATION:
+                ydl_opts["postprocessors"] = [{
                     "key": "FFmpegExtractAudio",
                     "preferredcodec": "mp3",
                     "preferredquality": "320",
-                }],
-            })
+                }]
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
         else:
-            format_candidates = [
-                (
-                    f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
-                    f"bestvideo[height<={quality}]+bestaudio/"
-                    f"best[height<={quality}]/"
-                    f"bestvideo+bestaudio/best"
-                ),
-                (
-                    f"bestvideo[height<={quality}]+bestaudio/"
-                    f"best[height<={quality}]/"
-                    "bestvideo+bestaudio/best"
-                ),
-                "bestvideo+bestaudio/best",
-                "best",
-            ]
+            if FFMPEG_LOCATION:
+                format_candidates = [
+                    (
+                        f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
+                        f"bestvideo[height<={quality}]+bestaudio/"
+                        f"best[height<={quality}]/"
+                        f"bestvideo+bestaudio/best"
+                    ),
+                    (
+                        f"bestvideo[height<={quality}]+bestaudio/"
+                        f"best[height<={quality}]/"
+                        "bestvideo+bestaudio/best"
+                    ),
+                    "bestvideo+bestaudio/best",
+                    "best",
+                ]
+            else:
+                format_candidates = [
+                    f"best[ext=mp4][height<={quality}]/best[height<={quality}][ext=mp4]/best[height<={quality}]/best[ext=mp4]/best"
+                ]
 
             for attempt_index, format_candidate in enumerate(format_candidates):
                 ydl_opts = get_ydl_opts({
                     "format": format_candidate,
                     "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                    "merge_output_format": "mp4",
                 })
+                if FFMPEG_LOCATION:
+                    ydl_opts["merge_output_format"] = "mp4"
                 try:
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([url])
@@ -294,13 +301,19 @@ def download():
                         continue
                     raise
 
-        files = list(out_dir.iterdir())
+        files = sorted(out_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
         if not files:
             return jsonify({"error": "Download failed — no file produced"}), 500
 
         file_path = str(files[0])
-        ext = "mp3" if is_audio else "mp4"
+        ext = files[0].suffix.lstrip(".").lower() or ("mp3" if is_audio else "mp4")
         title = data.get("title", "download").replace("/", "-")
+        mimetype_map = {
+            "mp3": "audio/mpeg",
+            "m4a": "audio/mp4",
+            "mp4": "video/mp4",
+            "webm": "video/webm",
+        }
 
         def _cleanup():
             time.sleep(300)
@@ -315,7 +328,7 @@ def download():
             file_path,
             as_attachment=True,
             download_name=f"{title}.{ext}",
-            mimetype="audio/mpeg" if ext == "mp3" else "video/mp4",
+            mimetype=mimetype_map.get(ext, "application/octet-stream"),
         )
 
     except Exception as e:
