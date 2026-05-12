@@ -2,9 +2,18 @@ import os
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 COBALT_API = "https://api.cobalt.tools/"
 
@@ -14,6 +23,7 @@ def index():
 
 
 @app.route("/api/info", methods=["POST"])
+@limiter.limit("20 per minute")
 def get_info():
     """Fetch video metadata."""
     import yt_dlp
@@ -54,6 +64,7 @@ def get_info():
 
 
 @app.route("/api/download", methods=["POST"])
+@limiter.limit("10 per minute")
 def download():
     """Get download link via cobalt.tools API — no bot issues."""
     data = request.json or {}
@@ -103,6 +114,11 @@ def download():
         return jsonify({"error": "Request timed out. Try again."}), 504
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({"error": "Too many requests. Please slow down and try again in a minute."}), 429
 
 
 if __name__ == "__main__":

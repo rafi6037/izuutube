@@ -514,6 +514,28 @@
     return `${m}:${String(s).padStart(2,'0')}`;
   }
 
+  function friendlyError(msg) {
+    if (!msg) return 'Something went wrong. Please try again.';
+    const m = msg.toLowerCase();
+    if (m.includes('too many requests') || m.includes('rate limit') || m.includes('slow down'))
+      return '⏳ Too many requests — please wait a moment and try again.';
+    if (m.includes('age') && m.includes('restrict'))
+      return '🔞 This video is age-restricted and cannot be downloaded.';
+    if (m.includes('private'))
+      return '🔒 This video is private and cannot be downloaded.';
+    if (m.includes('unavailable') || m.includes('not available'))
+      return '🚫 This video is unavailable or has been removed.';
+    if (m.includes('copyright') || m.includes('blocked'))
+      return '⛔ This video is blocked or restricted in this region.';
+    if (m.includes('live'))
+      return '📺 Live streams cannot be downloaded.';
+    if (m.includes('unsupported') || m.includes('no formats'))
+      return '❌ This link isn\'t supported. Only YouTube links work.';
+    if (m.includes('timed out') || m.includes('timeout'))
+      return '⏱ The request timed out. Please try again.';
+    return '⚠ ' + msg;
+  }
+
   function showStatus(msg, type = 'info') {
     const el = document.getElementById('statusMsg');
     el.innerHTML = msg;
@@ -551,7 +573,7 @@
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (data.error) return showStatus('⚠ ' + data.error, 'error');
+      if (data.error) return showStatus(friendlyError(data.error), 'error');
 
       videoData = data;
 
@@ -613,7 +635,7 @@
       const data = await res.json();
 
       if (data.error) {
-        showStatus('⚠ ' + data.error, 'error');
+        showStatus(friendlyError(data.error), 'error');
         setProgress(false);
         return;
       }
