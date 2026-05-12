@@ -181,6 +181,7 @@ def download():
                 except yt_dlp.utils.DownloadError:
                     is_last = candidate_index == len(format_candidates) - 1
                     if not is_last:
+                        print(f"[IzuTube] yt-dlp format attempt failed, retrying with fallback ({candidate_index + 1}/{len(format_candidates)})")
                         continue
                     raise
 
