@@ -1,3 +1,4 @@
+import os
 import logging
 import requests
 from flask import Flask, request, jsonify
@@ -30,7 +31,13 @@ def get_basic_youtube_info(url):
     }
 
 
-def extract_remote_url(payload):
+def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=10):
+    if _depth > _max_depth:
+        return None
+
+    if _seen is None:
+        _seen = set()
+
     if isinstance(payload, str):
         value = payload.strip()
         if value.startswith("http://") or value.startswith("https://"):
@@ -38,19 +45,29 @@ def extract_remote_url(payload):
         return None
 
     if isinstance(payload, dict):
+        obj_id = id(payload)
+        if obj_id in _seen:
+            return None
+        _seen.add(obj_id)
+
         for key in ("url", "link", "download", "download_url", "downloadUrl", "file", "file_url", "fileUrl"):
             value = payload.get(key)
             if isinstance(value, str) and (value.startswith("http://") or value.startswith("https://")):
                 return value
         for value in payload.values():
-            found = extract_remote_url(value)
+            found = extract_remote_url(value, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
             if found:
                 return found
         return None
 
     if isinstance(payload, list):
+        obj_id = id(payload)
+        if obj_id in _seen:
+            return None
+        _seen.add(obj_id)
+
         for item in payload:
-            found = extract_remote_url(item)
+            found = extract_remote_url(item, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
             if found:
                 return found
     return None
@@ -97,7 +114,7 @@ def download():
         )
         res.raise_for_status()
 
-        content_type = (res.headers.get("content-type") or "").lower()
+        content_type = res.headers.get("Content-Type", "").lower()
         if "application/json" in content_type:
             payload = res.json()
             download_url = extract_remote_url(payload)
@@ -119,6 +136,5 @@ def download():
 
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port, debug=False)
