@@ -1,6 +1,7 @@
 import os
 import logging
 import requests
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -12,6 +13,29 @@ YT2MP3_API = "https://www.yt2mp3converter.net/apis/fetch.php"
 QUALITY_OPTIONS = [
     {"id": "mp3", "label": "MP3 — Audio Only", "type": "audio"},
 ]
+YOUTUBE_HOSTS = {
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "music.youtube.com",
+    "youtu.be",
+    "www.youtu.be",
+}
+
+
+def is_valid_youtube_url(url):
+    try:
+        parsed = urlparse(url.strip())
+    except Exception:
+        return False
+
+    if parsed.scheme not in ("http", "https"):
+        return False
+    if not parsed.netloc:
+        return False
+
+    host = (parsed.hostname or "").lower()
+    return host in YOUTUBE_HOSTS
 
 
 def get_basic_youtube_info(url):
@@ -31,7 +55,7 @@ def get_basic_youtube_info(url):
     }
 
 
-def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=10):
+def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=5):
     if _depth > _max_depth:
         return None
 
@@ -40,7 +64,7 @@ def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=10):
 
     if isinstance(payload, str):
         value = payload.strip()
-        if value.startswith("http://") or value.startswith("https://"):
+        if value.startswith("https://"):
             return value
         return None
 
@@ -52,7 +76,7 @@ def extract_remote_url(payload, *, _seen=None, _depth=0, _max_depth=10):
 
         for key in ("url", "link", "download", "download_url", "downloadUrl", "file", "file_url", "fileUrl"):
             value = payload.get(key)
-            if isinstance(value, str) and (value.startswith("http://") or value.startswith("https://")):
+            if isinstance(value, str) and value.startswith("https://"):
                 return value
         for value in payload.values():
             found = extract_remote_url(value, _seen=_seen, _depth=_depth + 1, _max_depth=_max_depth)
@@ -85,6 +109,8 @@ def get_info():
     url = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "No URL provided"}), 400
+    if not is_valid_youtube_url(url):
+        return jsonify({"error": "Please provide a valid YouTube URL"}), 400
 
     try:
         info = get_basic_youtube_info(url)
@@ -105,6 +131,8 @@ def download():
 
     if not url:
         return jsonify({"error": "No URL provided"}), 400
+    if not is_valid_youtube_url(url):
+        return jsonify({"error": "Please provide a valid YouTube URL"}), 400
 
     try:
         res = requests.get(
@@ -124,7 +152,7 @@ def download():
             return jsonify({"error": message or "Failed to get MP3 download link"}), 502
 
         text = res.text.strip()
-        if text.startswith("http://") or text.startswith("https://"):
+        if text.startswith("https://"):
             return jsonify({"url": text})
         return jsonify({"error": "Unexpected response from MP3 provider"}), 502
     except requests.RequestException as e:
