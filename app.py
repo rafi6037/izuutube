@@ -75,7 +75,7 @@ def is_valid_https_url(url):
 
 
 def find_https_download_link(payload, *, seen=None, depth=0, depth_limit=MAX_RESPONSE_PARSE_DEPTH):
-    if depth > depth_limit:
+    if depth >= depth_limit:
         return None
 
     if seen is None:
