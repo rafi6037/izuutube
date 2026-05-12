@@ -1,5 +1,6 @@
 import os
 import logging
+import shutil
 import threading
 import time
 import requests
@@ -23,6 +24,13 @@ QUALITY_OPTIONS = [
 ]
 BOT_CHECK_INDICATORS = ("sign in to confirm", "not a bot")
 
+# Detect ffmpeg location at startup
+FFMPEG_LOCATION = shutil.which("ffmpeg")
+if FFMPEG_LOCATION:
+    print(f"[IzuTube] ffmpeg found at {FFMPEG_LOCATION} ✓")
+else:
+    print("[IzuTube] WARNING: ffmpeg not found in PATH — audio conversion and video merging will be unavailable")
+
 # Write cookies from environment variable to a temp file at startup
 cookies_content = os.environ.get("COOKIES_CONTENT", "").strip()
 if cookies_content:
@@ -43,6 +51,8 @@ def get_ydl_opts(extra=None):
     }
     if COOKIES_FILE:
         opts["cookiefile"] = COOKIES_FILE
+    if FFMPEG_LOCATION:
+        opts["ffmpeg_location"] = FFMPEG_LOCATION
     if extra:
         opts.update(extra)
     return opts
