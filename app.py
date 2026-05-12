@@ -24,6 +24,17 @@ QUALITY_OPTIONS = [
     {"id": "360p", "label": "360p Video",        "type": "video", "height": 360},
 ]
 BOT_CHECK_INDICATORS = ("sign in to confirm", "not a bot")
+MIMETYPE_MAP = {
+    "mp3": "audio/mpeg",
+    "m4a": "audio/mp4",
+    "opus": "audio/opus",
+    "ogg": "audio/ogg",
+    "flac": "audio/flac",
+    "mp4": "video/mp4",
+    "webm": "video/webm",
+    "mkv": "video/x-matroska",
+    "avi": "video/x-msvideo",
+}
 
 # Detect ffmpeg location at startup
 FFMPEG_LOCATION = shutil.which("ffmpeg")
@@ -244,40 +255,48 @@ def download():
 
         if is_audio:
             ydl_opts = get_ydl_opts({
-                "format": "bestaudio/best",
+                "format": "bestaudio/best" if FFMPEG_LOCATION else "bestaudio[ext=m4a]/bestaudio/best",
                 "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                "postprocessors": [{
+            })
+            if FFMPEG_LOCATION:
+                ydl_opts["postprocessors"] = [{
                     "key": "FFmpegExtractAudio",
                     "preferredcodec": "mp3",
                     "preferredquality": "320",
-                }],
-            })
+                }]
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
         else:
-            format_candidates = [
-                (
-                    f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
-                    f"bestvideo[height<={quality}]+bestaudio/"
-                    f"best[height<={quality}]/"
-                    f"bestvideo+bestaudio/best"
-                ),
-                (
-                    f"bestvideo[height<={quality}]+bestaudio/"
-                    f"best[height<={quality}]/"
-                    "bestvideo+bestaudio/best"
-                ),
-                "bestvideo+bestaudio/best",
-                "best",
-            ]
+            if FFMPEG_LOCATION:
+                format_candidates = [
+                    (
+                        f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
+                        f"bestvideo[height<={quality}]+bestaudio/"
+                        f"best[height<={quality}]/"
+                        f"bestvideo+bestaudio/best"
+                    ),
+                    (
+                        f"bestvideo[height<={quality}]+bestaudio/"
+                        f"best[height<={quality}]/"
+                        "bestvideo+bestaudio/best"
+                    ),
+                    "bestvideo+bestaudio/best",
+                    "best",
+                ]
+            else:
+                format_candidates = [
+                    f"best[ext=mp4][height<={quality}]/best[height<={quality}][ext=mp4]/best[height<={quality}]",
+                    "best[ext=mp4]/best",
+                ]
 
             for attempt_index, format_candidate in enumerate(format_candidates):
                 ydl_opts = get_ydl_opts({
                     "format": format_candidate,
                     "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                    "merge_output_format": "mp4",
                 })
+                if FFMPEG_LOCATION:
+                    ydl_opts["merge_output_format"] = "mp4"
                 try:
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([url])
@@ -297,9 +316,15 @@ def download():
         files = list(out_dir.iterdir())
         if not files:
             return jsonify({"error": "Download failed — no file produced"}), 500
+        if len(files) > 1:
+            logger.warning("[IzuTube] Multiple output files produced; selecting newest result")
 
-        file_path = str(files[0])
-        ext = "mp3" if is_audio else "mp4"
+        output_file = files[0] if len(files) == 1 else max(files, key=lambda p: p.stat().st_mtime)
+        file_path = str(output_file)
+        ext = output_file.suffix[1:].lower() if output_file.suffix else ""
+        if not ext:
+            ext = "mp3" if is_audio else "mp4"
+            logger.warning("[IzuTube] Output file had no extension; defaulting to .%s", ext)
         title = data.get("title", "download").replace("/", "-")
 
         def _cleanup():
@@ -315,7 +340,7 @@ def download():
             file_path,
             as_attachment=True,
             download_name=f"{title}.{ext}",
-            mimetype="audio/mpeg" if ext == "mp3" else "video/mp4",
+            mimetype=MIMETYPE_MAP.get(ext, "application/octet-stream"),
         )
 
     except Exception as e:
