@@ -27,8 +27,13 @@ BOT_CHECK_INDICATORS = ("sign in to confirm", "not a bot")
 MIMETYPE_MAP = {
     "mp3": "audio/mpeg",
     "m4a": "audio/mp4",
+    "opus": "audio/opus",
+    "ogg": "audio/ogg",
+    "flac": "audio/flac",
     "mp4": "video/mp4",
     "webm": "video/webm",
+    "mkv": "video/x-matroska",
+    "avi": "video/x-msvideo",
 }
 
 # Detect ffmpeg location at startup
@@ -314,9 +319,9 @@ def download():
         if len(files) > 1:
             logger.warning("[IzuTube] Multiple output files produced; selecting newest result")
 
-        output_file = max(files, key=lambda p: p.stat().st_mtime)
+        output_file = files[0] if len(files) == 1 else max(files, key=lambda p: p.stat().st_mtime)
         file_path = str(output_file)
-        ext = output_file.suffix.lstrip(".").lower()
+        ext = output_file.suffix[1:].lower() if output_file.suffix else ""
         if not ext:
             ext = "mp3" if is_audio else "mp4"
             logger.warning("[IzuTube] Output file had no extension; defaulting to .%s", ext)
