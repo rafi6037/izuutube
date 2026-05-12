@@ -182,12 +182,12 @@ def download():
                     break
                 except yt_dlp.utils.DownloadError as e:
                     is_last = candidate_index == len(format_candidates) - 1
-                    is_format_unavailable = "requested format is not available" in str(e).lower()
-                    if is_format_unavailable and not is_last:
+                    if not is_last:
                         logger.warning(
-                            "[IzuTube] yt-dlp format attempt failed, retrying with fallback (%s/%s)",
+                            "[IzuTube] yt-dlp format attempt failed, retrying with fallback (%s/%s): %s",
                             candidate_index + 1,
                             len(format_candidates),
+                            e,
                         )
                         continue
                     raise
