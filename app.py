@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 YT2MP3_API = "https://www.yt2mp3converter.net/apis/fetch.php"
 QUALITY_OPTIONS = [
     {"id": "mp3", "label": "MP3 — Audio Only", "type": "audio"},
+    {"id": "videos", "label": "Video — With Audio", "type": "video"},
+    {"id": "mp3-mp4", "label": "MP3 + MP4 — Both Formats", "type": "mixed"},
 ]
+SUPPORTED_FORMATS = {"mp3", "videos", "mp3-mp4"}
 YOUTUBE_HOSTS = {
     "youtube.com",
     "www.youtube.com",
@@ -116,6 +119,18 @@ def find_https_download_link(payload, *, seen=None, depth=0, depth_limit=MAX_RES
     return None
 
 
+def parse_optional_seconds(value, field_name):
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        seconds = int(str(value).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f"{field_name} must be an integer number of seconds")
+    if seconds < 0:
+        raise ValueError(f"{field_name} must be 0 or greater")
+    return seconds
+
+
 @app.route("/")
 def index():
     return app.send_static_file("index.html")
@@ -142,21 +157,40 @@ def get_info():
         return jsonify({"error": "Failed to fetch video info"}), 500
 
 
-@app.route("/api/download", methods=["POST"])
+@app.route("/api/download", methods=["GET", "POST"])
 def download():
-    """Fetch an MP3 download link from yt2mp3converter."""
-    data = request.json or {}
-    url = data.get("url", "").strip()
+    """Fetch a download link from yt2mp3converter."""
+    data = request.args if request.method == "GET" else (request.json or {})
+    url = str(data.get("url", "")).strip()
+    requested_format = str(data.get("format", "mp3")).strip().lower() or "mp3"
+    stime = data.get("stime")
+    etime = data.get("etime")
 
     if not url:
         return jsonify({"error": "No URL provided"}), 400
     if not is_valid_youtube_url(url):
         return jsonify({"error": "Please provide a valid YouTube URL"}), 400
+    if requested_format not in SUPPORTED_FORMATS:
+        return jsonify({"error": "Invalid format. Use mp3, videos, or mp3-mp4"}), 400
 
     try:
+        start_time = parse_optional_seconds(stime, "stime")
+        end_time = parse_optional_seconds(etime, "etime")
+        if start_time is not None and end_time is not None and end_time <= start_time:
+            return jsonify({"error": "etime must be greater than stime"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        provider_params = {"url": url, "format": requested_format}
+        if start_time is not None:
+            provider_params["stime"] = start_time
+        if end_time is not None:
+            provider_params["etime"] = end_time
+
         res = requests.get(
             YT2MP3_API,
-            params={"url": url, "format": "mp3"},
+            params=provider_params,
             timeout=20,
         )
         res.raise_for_status()
@@ -166,20 +200,25 @@ def download():
             payload = res.json()
             download_url = find_https_download_link(payload)
             if download_url:
-                return jsonify({"url": download_url})
+                response_payload = {"url": download_url, "download": download_url}
+                if isinstance(payload, dict):
+                    for key in ("title", "duration", "filesize"):
+                        if payload.get(key):
+                            response_payload[key] = payload.get(key)
+                return jsonify(response_payload)
             message = payload.get("error") if isinstance(payload, dict) else None
-            return jsonify({"error": message or "Failed to get MP3 download link"}), 502
+            return jsonify({"error": message or "Failed to get download link"}), 502
 
         text = res.text.strip()
         if is_valid_https_url(text):
-            return jsonify({"url": text})
-        return jsonify({"error": "Unexpected response from MP3 provider"}), 502
+            return jsonify({"url": text, "download": text})
+        return jsonify({"error": "Unexpected response from provider"}), 502
     except requests.RequestException as e:
-        logger.warning("[IzuTube] MP3 provider request failed: %s", e)
-        return jsonify({"error": "Failed to contact MP3 provider"}), 502
+        logger.warning("[IzuTube] Provider request failed: %s", e)
+        return jsonify({"error": "Failed to contact provider"}), 502
     except Exception:
-        logger.exception("[IzuTube] Unexpected error while fetching MP3 link")
-        return jsonify({"error": "Failed to get MP3 download link"}), 500
+        logger.exception("[IzuTube] Unexpected error while fetching download link")
+        return jsonify({"error": "Failed to get download link"}), 500
 
 
 if __name__ == "__main__":
