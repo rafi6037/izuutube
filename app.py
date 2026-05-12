@@ -97,16 +97,16 @@ def get_info():
         err = str(e)
         err_lower = err.lower()
         # Heuristic matching because yt-dlp error text can vary between locales.
-        needs_fallback = all(indicator in err_lower for indicator in BOT_CHECK_INDICATORS)
+        needs_fallback = any(indicator in err_lower for indicator in BOT_CHECK_INDICATORS)
         if not needs_fallback:
             logger.warning("[IzuTube] yt-dlp metadata fetch failed: %s", e)
-            return jsonify({"error": "Failed to fetch video info from YouTube. Verify the URL, and add COOKIES_CONTENT for restricted videos."}), 400
+            return jsonify({"error": "Failed to fetch video info from YouTube. Verify the URL. If the video is restricted, authentication may be required."}), 400
         try:
             info = get_basic_youtube_info(url)
             return jsonify({**info, "formats": QUALITY_OPTIONS})
         except requests.RequestException as fallback_error:
             logger.warning("[IzuTube] oEmbed fallback failed: %s", fallback_error)
-            return jsonify({"error": "Failed to fetch video info. Add COOKIES_CONTENT for restricted videos."}), 400
+            return jsonify({"error": "Failed to fetch video info. If the video is restricted, authentication may be required."}), 400
     except Exception as e:
         logger.exception("[IzuTube] Unexpected error while fetching metadata")
         return jsonify({"error": "Failed to fetch video info"}), 500
