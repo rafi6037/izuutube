@@ -148,21 +148,41 @@ def download():
                     "preferredquality": "320",
                 }],
             })
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
         else:
-            # Flexible format: try exact height, fall back to best available
-            ydl_opts = get_ydl_opts({
-                "format": (
+            format_candidates = [
+                (
                     f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
                     f"bestvideo[height<={quality}]+bestaudio/"
                     f"best[height<={quality}]/"
                     f"bestvideo+bestaudio/best"
                 ),
-                "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                "merge_output_format": "mp4",
-            })
+                (
+                    f"bestvideo[height<={quality}]+bestaudio/"
+                    f"best[height<={quality}]/"
+                    "bestvideo+bestaudio/best"
+                ),
+                "bestvideo+bestaudio/best",
+                "best",
+            ]
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            for i, fmt_candidate in enumerate(format_candidates):
+                ydl_opts = get_ydl_opts({
+                    "format": fmt_candidate,
+                    "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
+                    "merge_output_format": "mp4",
+                })
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([url])
+                    break
+                except Exception as e:
+                    is_last = i == len(format_candidates) - 1
+                    if "Requested format is not available" in str(e) and not is_last:
+                        continue
+                    raise
 
         files = list(out_dir.iterdir())
         if not files:
