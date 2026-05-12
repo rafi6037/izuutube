@@ -14,10 +14,19 @@ logger = logging.getLogger(__name__)
 
 COBALT_API = "https://api.cobalt.tools/"
 COOKIES_FILE = None
+QUALITY_OPTIONS = [
+    {"id": "mp3",  "label": "MP3 — Audio Only", "type": "audio"},
+    {"id": "1080p","label": "1080p Video",       "type": "video", "height": 1080},
+    {"id": "720p", "label": "720p Video",        "type": "video", "height": 720},
+    {"id": "480p", "label": "480p Video",        "type": "video", "height": 480},
+    {"id": "360p", "label": "360p Video",        "type": "video", "height": 360},
+]
+BOT_CHECK_INDICATORS = ("sign in to confirm", "not a bot")
 
 # Write cookies from environment variable to a temp file at startup
 cookies_content = os.environ.get("COOKIES_CONTENT", "").strip()
 if cookies_content:
+    cookies_content = cookies_content.replace("\\n", "\n")
     COOKIES_FILE = "/tmp/yt_cookies.txt"
     with open(COOKIES_FILE, "w") as f:
         f.write(cookies_content)
@@ -37,6 +46,23 @@ def get_ydl_opts(extra=None):
     if extra:
         opts.update(extra)
     return opts
+
+
+def get_basic_youtube_info(url):
+    """Fallback metadata source when yt-dlp is blocked by YouTube bot checks."""
+    response = requests.get(
+        "https://www.youtube.com/oembed",
+        params={"url": url, "format": "json"},
+        timeout=10,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return {
+        "title": data.get("title", "video"),
+        "thumbnail": data.get("thumbnail_url"),
+        "duration": None,
+        "uploader": data.get("author_name"),
+    }
 
 
 @app.route("/")
@@ -60,26 +86,30 @@ def get_info():
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
-
-            # Build a simple fixed format list — cobalt handles actual quality selection
-            formats = [
-                {"id": "mp3",  "label": "MP3 — Audio Only", "type": "audio"},
-                {"id": "1080p","label": "1080p Video",       "type": "video", "height": 1080},
-                {"id": "720p", "label": "720p Video",        "type": "video", "height": 720},
-                {"id": "480p", "label": "480p Video",        "type": "video", "height": 480},
-                {"id": "360p", "label": "360p Video",        "type": "video", "height": 360},
-            ]
-
             return jsonify({
                 "title":     info.get("title", "video"),
                 "thumbnail": info.get("thumbnail"),
                 "duration":  info.get("duration"),
                 "uploader":  info.get("uploader"),
-                "formats":   formats,
+                "formats":   QUALITY_OPTIONS,
             })
-
+    except yt_dlp.utils.DownloadError as e:
+        err = str(e)
+        err_lower = err.lower()
+        # Heuristic matching because yt-dlp error text can vary between locales.
+        needs_fallback = any(indicator in err_lower for indicator in BOT_CHECK_INDICATORS)
+        if not needs_fallback:
+            logger.warning("[IzuTube] yt-dlp metadata fetch failed: %s", e)
+            return jsonify({"error": "Failed to fetch video info from YouTube. Verify the URL. If the video is restricted, authentication may be required."}), 400
+        try:
+            info = get_basic_youtube_info(url)
+            return jsonify({**info, "formats": QUALITY_OPTIONS})
+        except requests.RequestException as fallback_error:
+            logger.warning("[IzuTube] oEmbed fallback failed: %s", fallback_error)
+            return jsonify({"error": "Failed to fetch video info. If the video is restricted, authentication may be required."}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        logger.exception("[IzuTube] Unexpected error while fetching metadata")
+        return jsonify({"error": "Failed to fetch video info"}), 500
 
 
 @app.route("/api/download", methods=["POST"])
