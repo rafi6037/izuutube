@@ -170,9 +170,9 @@ def download():
                 "best",
             ]
 
-            for candidate_index, fmt_candidate in enumerate(format_candidates):
+            for attempt_index, format_candidate in enumerate(format_candidates):
                 ydl_opts = get_ydl_opts({
-                    "format": fmt_candidate,
+                    "format": format_candidate,
                     "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
                     "merge_output_format": "mp4",
                 })
@@ -181,11 +181,11 @@ def download():
                         ydl.download([url])
                     break
                 except yt_dlp.utils.DownloadError as e:
-                    is_last = candidate_index == len(format_candidates) - 1
+                    is_last = attempt_index == len(format_candidates) - 1
                     if not is_last:
                         logger.warning(
                             "[IzuTube] yt-dlp format attempt failed, retrying with fallback (%s/%s): %s",
-                            candidate_index + 1,
+                            attempt_index + 1,
                             len(format_candidates),
                             e,
                         )
