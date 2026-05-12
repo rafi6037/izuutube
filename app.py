@@ -169,7 +169,6 @@ def get_info():
 
     opts = get_ydl_opts({
         "skip_download": True,
-        "format": "best",  # don't evaluate all formats, just get metadata
     })
 
     try:
