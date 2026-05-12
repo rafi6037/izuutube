@@ -58,7 +58,7 @@ def normalize_cookies_content(raw_content):
         elif isinstance(parsed, dict):
             if isinstance(parsed.get("cookies"), list):
                 cookies = parsed["cookies"]
-            elif {"domain", "name", "value"}.issubset(parsed.keys()):
+            elif all(key in parsed for key in ("domain", "name", "value")):
                 cookies = [parsed]
 
         lines = []
@@ -103,9 +103,9 @@ def normalize_cookies_content(raw_content):
 cookies_content = normalize_cookies_content(os.environ.get("COOKIES_CONTENT", ""))
 if cookies_content:
     COOKIES_FILE = "/tmp/yt_cookies.txt"
-    with open(COOKIES_FILE, "w") as f:
+    fd = os.open(COOKIES_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
         f.write(cookies_content)
-    os.chmod(COOKIES_FILE, 0o600)
     print("[IzuTube] Cookies loaded from environment variable ✓")
 else:
     print("[IzuTube] No valid cookies found — running without authentication")
