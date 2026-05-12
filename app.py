@@ -1,140 +1,52 @@
 import os
-import json
 import logging
-import shutil
-import threading
-import time
 import requests
-import yt_dlp
-from pathlib import Path
-from flask import Flask, request, jsonify, send_file
+from urllib.parse import urlparse
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 logger = logging.getLogger(__name__)
 
-COBALT_API = "https://api.cobalt.tools/"
-COOKIES_FILE = None
+YT2MP3_API = "https://www.yt2mp3converter.net/apis/fetch.php"
 QUALITY_OPTIONS = [
-    {"id": "mp3",  "label": "MP3 — Audio Only", "type": "audio"},
-    {"id": "1080p","label": "1080p Video",       "type": "video", "height": 1080},
-    {"id": "720p", "label": "720p Video",        "type": "video", "height": 720},
-    {"id": "480p", "label": "480p Video",        "type": "video", "height": 480},
-    {"id": "360p", "label": "360p Video",        "type": "video", "height": 360},
+    {"id": "mp3", "label": "MP3 — Audio Only", "type": "audio"},
 ]
-BOT_CHECK_INDICATORS = ("sign in to confirm", "not a bot")
-MIMETYPE_MAP = {
-    "mp3": "audio/mpeg",
-    "m4a": "audio/mp4",
-    "opus": "audio/opus",
-    "ogg": "audio/ogg",
-    "flac": "audio/flac",
-    "mp4": "video/mp4",
-    "webm": "video/webm",
-    "mkv": "video/x-matroska",
-    "avi": "video/x-msvideo",
+YOUTUBE_HOSTS = {
+    "youtube.com",
+    "www.youtube.com",
+    "m.youtube.com",
+    "music.youtube.com",
+    "youtu.be",
+    "www.youtu.be",
 }
-
-# Detect ffmpeg location at startup
-FFMPEG_LOCATION = shutil.which("ffmpeg")
-if FFMPEG_LOCATION:
-    print(f"[IzuTube] ffmpeg found at {FFMPEG_LOCATION} ✓")
-else:
-    print("[IzuTube] WARNING: ffmpeg not found in PATH — audio conversion and video merging will be unavailable")
-
-def normalize_cookies_content(raw_content):
-    if not raw_content:
-        return None
-
-    content = raw_content.strip()
-    if not content:
-        return None
-
-    # Common env-var formatting issues (escaped newlines and CRLF)
-    content = content.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
-
-    # Support JSON exports (array of cookies or object with `cookies` key)
-    parsed = None
-    if content.startswith("{") or content.startswith("["):
-        try:
-            parsed = json.loads(content)
-        except json.JSONDecodeError:
-            parsed = None
-
-    if parsed is not None:
-        cookies = []
-        if isinstance(parsed, list):
-            cookies = parsed
-        elif isinstance(parsed, dict):
-            if isinstance(parsed.get("cookies"), list):
-                cookies = parsed["cookies"]
-            elif all(key in parsed for key in ("domain", "name", "value")):
-                cookies = [parsed]
-
-        lines = []
-        for cookie in cookies:
-            if not isinstance(cookie, dict):
-                continue
-            domain = str(cookie.get("domain", "")).strip()
-            name = str(cookie.get("name", "")).strip()
-            # Preserve cookie value exactly as provided (whitespace can be significant).
-            value = str(cookie.get("value", ""))
-            if not domain or not name:
-                continue
-            include_subdomains = "TRUE" if domain.startswith(".") else "FALSE"
-            path = str(cookie.get("path", "/") or "/")
-            secure = "TRUE" if cookie.get("secure") else "FALSE"
-            expiry = cookie.get("expiry")
-            if expiry is None:
-                expiry = cookie.get("expires")
-            if expiry is None:
-                expiry = 0
-            try:
-                expiry = int(expiry)
-            except (TypeError, ValueError):
-                expiry = 0
-            lines.append(
-                f"{domain}\t{include_subdomains}\t{path}\t{secure}\t{expiry}\t{name}\t{value}"
-            )
-
-        if not lines:
-            return None
-        return "# Netscape HTTP Cookie File\n" + "\n".join(lines) + "\n"
-
-    # Assume plain Netscape format (prepend header if missing)
-    if not content.startswith("# Netscape HTTP Cookie File"):
-        content = "# Netscape HTTP Cookie File\n" + content
-    if not content.endswith("\n"):
-        content += "\n"
-    return content
+DOWNLOAD_URL_KEYS = (
+    "url",
+    "link",
+    "download",
+    "download_url",
+    "downloadUrl",
+    "file",
+    "file_url",
+    "fileUrl",
+)
+MAX_RESPONSE_PARSE_DEPTH = 5
 
 
-# Write cookies from environment variable to a temp file at startup
-cookies_content = normalize_cookies_content(os.environ.get("COOKIES_CONTENT", ""))
-if cookies_content:
-    COOKIES_FILE = "/tmp/yt_cookies.txt"
-    fd = os.open(COOKIES_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(cookies_content)
-    print("[IzuTube] Cookies loaded from environment variable ✓")
-else:
-    print("[IzuTube] No valid cookies found — running without authentication")
+def is_valid_youtube_url(url):
+    try:
+        parsed = urlparse(url.strip())
+    except Exception:
+        return False
 
+    if parsed.scheme not in ("http", "https"):
+        return False
+    if not parsed.netloc:
+        return False
 
-def get_ydl_opts(extra=None):
-    opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "extractor_args": {"youtube": {"skip": ["dash", "hls"], "player_client": ["android", "web"]}},
-    }
-    if COOKIES_FILE:
-        opts["cookiefile"] = COOKIES_FILE
-    if FFMPEG_LOCATION:
-        opts["ffmpeg_location"] = FFMPEG_LOCATION
-    if extra:
-        opts.update(extra)
-    return opts
+    host = (parsed.hostname or "").lower()
+    return host in YOUTUBE_HOSTS
 
 
 def get_basic_youtube_info(url):
@@ -154,6 +66,56 @@ def get_basic_youtube_info(url):
     }
 
 
+def is_valid_https_url(url):
+    try:
+        parsed = urlparse(url.strip())
+    except Exception:
+        return False
+    return parsed.scheme == "https" and bool(parsed.netloc)
+
+
+def find_https_download_link(payload, *, seen=None, depth=0, depth_limit=MAX_RESPONSE_PARSE_DEPTH):
+    if depth >= depth_limit:
+        return None
+
+    if seen is None:
+        seen = set()
+
+    if isinstance(payload, str):
+        value = payload.strip()
+        if is_valid_https_url(value):
+            return value
+        return None
+
+    if isinstance(payload, dict):
+        obj_id = id(payload)
+        if obj_id in seen:
+            return None
+        seen.add(obj_id)
+
+        for key in DOWNLOAD_URL_KEYS:
+            value = payload.get(key)
+            if isinstance(value, str) and is_valid_https_url(value):
+                return value
+        for value in payload.values():
+            found = find_https_download_link(value, seen=seen, depth=depth + 1, depth_limit=depth_limit)
+            if found:
+                return found
+        return None
+
+    if isinstance(payload, list):
+        obj_id = id(payload)
+        if obj_id in seen:
+            return None
+        seen.add(obj_id)
+
+        for item in payload:
+            found = find_https_download_link(item, seen=seen, depth=depth + 1, depth_limit=depth_limit)
+            if found:
+                return found
+    return None
+
+
 @app.route("/")
 def index():
     return app.send_static_file("index.html")
@@ -161,41 +123,20 @@ def index():
 
 @app.route("/api/info", methods=["POST"])
 def get_info():
-    """Fetch video metadata — yt-dlp with cookies, simplified format list."""
+    """Fetch lightweight YouTube metadata with oEmbed and MP3-only format list."""
     data = request.json or {}
     url = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "No URL provided"}), 400
-
-    opts = get_ydl_opts({
-        "skip_download": True,
-        "format": "best",  # don't evaluate all formats, just get metadata
-    })
+    if not is_valid_youtube_url(url):
+        return jsonify({"error": "Please provide a valid YouTube URL"}), 400
 
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            return jsonify({
-                "title":     info.get("title", "video"),
-                "thumbnail": info.get("thumbnail"),
-                "duration":  info.get("duration"),
-                "uploader":  info.get("uploader"),
-                "formats":   QUALITY_OPTIONS,
-            })
-    except yt_dlp.utils.DownloadError as e:
-        err = str(e)
-        err_lower = err.lower()
-        # Heuristic matching because yt-dlp error text can vary between locales.
-        needs_fallback = any(indicator in err_lower for indicator in BOT_CHECK_INDICATORS)
-        if not needs_fallback:
-            logger.warning("[IzuTube] yt-dlp metadata fetch failed: %s", e)
-            return jsonify({"error": "Failed to fetch video info from YouTube. Verify the URL. If the video is restricted, authentication may be required."}), 400
-        try:
-            info = get_basic_youtube_info(url)
-            return jsonify({**info, "formats": QUALITY_OPTIONS})
-        except requests.RequestException as fallback_error:
-            logger.warning("[IzuTube] oEmbed fallback failed: %s", fallback_error)
-            return jsonify({"error": "Failed to fetch video info. If the video is restricted, authentication may be required."}), 400
+        info = get_basic_youtube_info(url)
+        return jsonify({**info, "formats": QUALITY_OPTIONS})
+    except requests.RequestException as e:
+        logger.warning("[IzuTube] oEmbed metadata fetch failed: %s", e)
+        return jsonify({"error": "Failed to fetch video info. Verify the YouTube URL."}), 400
     except Exception as e:
         logger.exception("[IzuTube] Unexpected error while fetching metadata")
         return jsonify({"error": "Failed to fetch video info"}), 500
@@ -203,148 +144,42 @@ def get_info():
 
 @app.route("/api/download", methods=["POST"])
 def download():
-    """Try cobalt.tools first, fall back to yt-dlp with cookies."""
+    """Fetch an MP3 download link from yt2mp3converter."""
     data = request.json or {}
     url = data.get("url", "").strip()
-    fmt = data.get("format", "mp3")
 
     if not url:
         return jsonify({"error": "No URL provided"}), 400
-
-    is_audio = fmt == "mp3"
-    quality = fmt.replace("p", "") if not is_audio else "1080"
-
-    # ── Try cobalt.tools first ──
-    try:
-        payload = {
-            "url": url,
-            "downloadMode": "audio" if is_audio else "auto",
-            "videoQuality": quality,
-            "audioFormat": "mp3",
-            "audioBitrate": "320",
-            "filenameStyle": "pretty",
-        }
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-        res = requests.post(COBALT_API, json=payload, headers=headers, timeout=15)
-        result = res.json()
-        status = result.get("status")
-
-        if status in ("redirect", "tunnel", "stream"):
-            return jsonify({"url": result.get("url")})
-
-        if status == "picker":
-            items = result.get("picker", [])
-            if items:
-                return jsonify({"url": items[0].get("url")})
-
-        print(f"[IzuTube] cobalt status={status}, falling back to yt-dlp")
-
-    except Exception as e:
-        print(f"[IzuTube] cobalt error: {e} — falling back to yt-dlp")
-
-    # ── Fallback: yt-dlp with cookies ──
-    if not COOKIES_FILE:
-        return jsonify({"error": "Download failed. Add COOKIES_CONTENT to Railway environment variables."}), 500
+    if not is_valid_youtube_url(url):
+        return jsonify({"error": "Please provide a valid YouTube URL"}), 400
 
     try:
-        out_dir = Path(f"/tmp/izutube_{os.urandom(4).hex()}")
-        out_dir.mkdir(exist_ok=True)
-
-        if is_audio:
-            ydl_opts = get_ydl_opts({
-                "format": "bestaudio/best" if FFMPEG_LOCATION else "bestaudio[ext=m4a]/bestaudio/best",
-                "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-            })
-            if FFMPEG_LOCATION:
-                ydl_opts["postprocessors"] = [{
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "320",
-                }]
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-        else:
-            if FFMPEG_LOCATION:
-                format_candidates = [
-                    (
-                        f"bestvideo[height<={quality}][ext=mp4]+bestaudio[ext=m4a]/"
-                        f"bestvideo[height<={quality}]+bestaudio/"
-                        f"best[height<={quality}]/"
-                        f"bestvideo+bestaudio/best"
-                    ),
-                    (
-                        f"bestvideo[height<={quality}]+bestaudio/"
-                        f"best[height<={quality}]/"
-                        "bestvideo+bestaudio/best"
-                    ),
-                    "bestvideo+bestaudio/best",
-                    "best",
-                ]
-            else:
-                format_candidates = [
-                    f"best[ext=mp4][height<={quality}]/best[height<={quality}][ext=mp4]/best[height<={quality}]",
-                    "best[ext=mp4]/best",
-                ]
-
-            for attempt_index, format_candidate in enumerate(format_candidates):
-                ydl_opts = get_ydl_opts({
-                    "format": format_candidate,
-                    "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
-                })
-                if FFMPEG_LOCATION:
-                    ydl_opts["merge_output_format"] = "mp4"
-                try:
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                        ydl.download([url])
-                    break
-                except yt_dlp.utils.DownloadError as e:
-                    is_last = attempt_index == len(format_candidates) - 1
-                    if not is_last:
-                        logger.warning(
-                            "[IzuTube] yt-dlp format attempt failed, retrying with fallback (%s/%s): %s",
-                            attempt_index + 1,
-                            len(format_candidates),
-                            e,
-                        )
-                        continue
-                    raise
-
-        files = list(out_dir.iterdir())
-        if not files:
-            return jsonify({"error": "Download failed — no file produced"}), 500
-        if len(files) > 1:
-            logger.warning("[IzuTube] Multiple output files produced; selecting newest result")
-
-        output_file = files[0] if len(files) == 1 else max(files, key=lambda p: p.stat().st_mtime)
-        file_path = str(output_file)
-        ext = output_file.suffix[1:].lower() if output_file.suffix else ""
-        if not ext:
-            ext = "mp3" if is_audio else "mp4"
-            logger.warning("[IzuTube] Output file had no extension; defaulting to .%s", ext)
-        title = data.get("title", "download").replace("/", "-")
-
-        def _cleanup():
-            time.sleep(300)
-            try:
-                os.remove(file_path)
-                out_dir.rmdir()
-            except Exception:
-                pass
-        threading.Thread(target=_cleanup, daemon=True).start()
-
-        return send_file(
-            file_path,
-            as_attachment=True,
-            download_name=f"{title}.{ext}",
-            mimetype=MIMETYPE_MAP.get(ext, "application/octet-stream"),
+        res = requests.get(
+            YT2MP3_API,
+            params={"url": url, "format": "mp3"},
+            timeout=20,
         )
+        res.raise_for_status()
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        content_type = res.headers.get("Content-Type", "").lower()
+        if content_type.startswith("application/json"):
+            payload = res.json()
+            download_url = find_https_download_link(payload)
+            if download_url:
+                return jsonify({"url": download_url})
+            message = payload.get("error") if isinstance(payload, dict) else None
+            return jsonify({"error": message or "Failed to get MP3 download link"}), 502
+
+        text = res.text.strip()
+        if is_valid_https_url(text):
+            return jsonify({"url": text})
+        return jsonify({"error": "Unexpected response from MP3 provider"}), 502
+    except requests.RequestException as e:
+        logger.warning("[IzuTube] MP3 provider request failed: %s", e)
+        return jsonify({"error": "Failed to contact MP3 provider"}), 502
+    except Exception:
+        logger.exception("[IzuTube] Unexpected error while fetching MP3 link")
+        return jsonify({"error": "Failed to get MP3 download link"}), 500
 
 
 if __name__ == "__main__":
