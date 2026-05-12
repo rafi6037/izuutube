@@ -168,7 +168,7 @@ def download():
                 "best",
             ]
 
-            for i, fmt_candidate in enumerate(format_candidates):
+            for candidate_index, fmt_candidate in enumerate(format_candidates):
                 ydl_opts = get_ydl_opts({
                     "format": fmt_candidate,
                     "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
@@ -178,9 +178,9 @@ def download():
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         ydl.download([url])
                     break
-                except Exception as e:
-                    is_last = i == len(format_candidates) - 1
-                    if "Requested format is not available" in str(e) and not is_last:
+                except yt_dlp.utils.DownloadError:
+                    is_last = candidate_index == len(format_candidates) - 1
+                    if not is_last:
                         continue
                     raise
 
