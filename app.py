@@ -250,7 +250,7 @@ def download():
 
         if is_audio:
             ydl_opts = get_ydl_opts({
-                "format": "bestaudio[ext=m4a]/bestaudio/best",
+                "format": "bestaudio/best" if FFMPEG_LOCATION else "bestaudio[ext=m4a]/bestaudio/best",
                 "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
             })
             if FFMPEG_LOCATION:
@@ -281,7 +281,8 @@ def download():
                 ]
             else:
                 format_candidates = [
-                    f"best[ext=mp4][height<={quality}]/best[height<={quality}][ext=mp4]/best[height<={quality}]/best[ext=mp4]/best"
+                    f"best[ext=mp4][height<={quality}]/best[height<={quality}][ext=mp4]/best[height<={quality}]",
+                    "best[ext=mp4]/best",
                 ]
 
             for attempt_index, format_candidate in enumerate(format_candidates):
@@ -310,10 +311,15 @@ def download():
         files = list(out_dir.iterdir())
         if not files:
             return jsonify({"error": "Download failed — no file produced"}), 500
+        if len(files) > 1:
+            logger.warning("[IzuTube] Multiple output files produced; selecting newest result")
 
         output_file = max(files, key=lambda p: p.stat().st_mtime)
         file_path = str(output_file)
-        ext = output_file.suffix.lstrip(".").lower() or ("mp3" if is_audio else "mp4")
+        ext = output_file.suffix.lstrip(".").lower()
+        if not ext:
+            ext = "mp3" if is_audio else "mp4"
+            logger.warning("[IzuTube] Output file had no extension; defaulting to .%s", ext)
         title = data.get("title", "download").replace("/", "-")
 
         def _cleanup():
