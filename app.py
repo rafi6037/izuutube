@@ -24,6 +24,12 @@ QUALITY_OPTIONS = [
     {"id": "360p", "label": "360p Video",        "type": "video", "height": 360},
 ]
 BOT_CHECK_INDICATORS = ("sign in to confirm", "not a bot")
+MIMETYPE_MAP = {
+    "mp3": "audio/mpeg",
+    "m4a": "audio/mp4",
+    "mp4": "video/mp4",
+    "webm": "video/webm",
+}
 
 # Detect ffmpeg location at startup
 FFMPEG_LOCATION = shutil.which("ffmpeg")
@@ -301,19 +307,14 @@ def download():
                         continue
                     raise
 
-        files = sorted(out_dir.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True)
+        files = list(out_dir.iterdir())
         if not files:
             return jsonify({"error": "Download failed — no file produced"}), 500
 
-        file_path = str(files[0])
-        ext = files[0].suffix.lstrip(".").lower() or ("mp3" if is_audio else "mp4")
+        output_file = max(files, key=lambda p: p.stat().st_mtime)
+        file_path = str(output_file)
+        ext = output_file.suffix.lstrip(".").lower() or ("mp3" if is_audio else "mp4")
         title = data.get("title", "download").replace("/", "-")
-        mimetype_map = {
-            "mp3": "audio/mpeg",
-            "m4a": "audio/mp4",
-            "mp4": "video/mp4",
-            "webm": "video/webm",
-        }
 
         def _cleanup():
             time.sleep(300)
@@ -328,7 +329,7 @@ def download():
             file_path,
             as_attachment=True,
             download_name=f"{title}.{ext}",
-            mimetype=mimetype_map.get(ext, "application/octet-stream"),
+            mimetype=MIMETYPE_MAP.get(ext, "application/octet-stream"),
         )
 
     except Exception as e:
