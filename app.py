@@ -1,5 +1,6 @@
 import os
 import requests
+import yt_dlp
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -7,6 +8,31 @@ app = Flask(__name__, static_folder="static", static_url_path="")
 CORS(app)
 
 COBALT_API = "https://api.cobalt.tools/"
+COOKIES_FILE = None
+
+# Write cookies from environment variable to a temp file at startup
+cookies_content = os.environ.get("COOKIES_CONTENT", "").strip()
+if cookies_content:
+    COOKIES_FILE = "/tmp/yt_cookies.txt"
+    with open(COOKIES_FILE, "w") as f:
+        f.write(cookies_content)
+    print("[IzuTube] Cookies loaded from environment variable ✓")
+else:
+    print("[IzuTube] No cookies found — running without authentication")
+
+
+def get_ydl_opts(extra=None):
+    """Base yt-dlp options, with cookies if available."""
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+    }
+    if COOKIES_FILE:
+        opts["cookiefile"] = COOKIES_FILE
+    if extra:
+        opts.update(extra)
+    return opts
+
 
 @app.route("/")
 def index():
@@ -15,16 +41,16 @@ def index():
 
 @app.route("/api/info", methods=["POST"])
 def get_info():
-    """Fetch video metadata."""
-    import yt_dlp
+    """Fetch video metadata using yt-dlp (with cookies)."""
     data = request.json or {}
     url = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "No URL provided"}), 400
 
-    ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+    opts = get_ydl_opts({"skip_download": True})
+
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
             formats = []
             seen = set()
@@ -36,7 +62,7 @@ def get_info():
                         "id": f"{height}p",
                         "label": f"{height}p Video",
                         "type": "video",
-                        "height": height
+                        "height": height,
                     })
 
             formats = sorted(formats, key=lambda x: x["height"], reverse=True)
@@ -49,13 +75,17 @@ def get_info():
                 "uploader": info.get("uploader"),
                 "formats": formats,
             })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 
 @app.route("/api/download", methods=["POST"])
 def download():
-    """Get download link via cobalt.tools API — no bot issues."""
+    """
+    Try cobalt.tools first (fast, no server load).
+    Fall back to yt-dlp with cookies if cobalt fails.
+    """
     data = request.json or {}
     url = data.get("url", "").strip()
     fmt = data.get("format", "mp3")
@@ -66,28 +96,23 @@ def download():
     is_audio = fmt == "mp3"
     quality = fmt.replace("p", "") if not is_audio else "1080"
 
-    payload = {
-        "url": url,
-        "downloadMode": "audio" if is_audio else "auto",
-        "videoQuality": quality,
-        "audioFormat": "mp3",
-        "audioBitrate": "320",
-        "filenameStyle": "pretty",
-    }
-
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-
+    # ── Try cobalt.tools first ──
     try:
-        res = requests.post(COBALT_API, json=payload, headers=headers, timeout=20)
+        payload = {
+            "url": url,
+            "downloadMode": "audio" if is_audio else "auto",
+            "videoQuality": quality,
+            "audioFormat": "mp3",
+            "audioBitrate": "320",
+            "filenameStyle": "pretty",
+        }
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        res = requests.post(COBALT_API, json=payload, headers=headers, timeout=15)
         result = res.json()
         status = result.get("status")
-
-        if status == "error":
-            code = result.get("error", {}).get("code", "unknown error")
-            return jsonify({"error": code}), 400
 
         if status in ("redirect", "tunnel", "stream"):
             return jsonify({"url": result.get("url")})
@@ -97,10 +122,69 @@ def download():
             if items:
                 return jsonify({"url": items[0].get("url")})
 
-        return jsonify({"error": "Unexpected response from server"}), 500
+        # cobalt failed — fall through to yt-dlp
+        print(f"[IzuTube] cobalt returned status={status}, falling back to yt-dlp")
 
-    except requests.exceptions.Timeout:
-        return jsonify({"error": "Request timed out. Try again."}), 504
+    except Exception as e:
+        print(f"[IzuTube] cobalt error: {e} — falling back to yt-dlp")
+
+    # ── Fallback: yt-dlp with cookies ──
+    if not COOKIES_FILE:
+        return jsonify({"error": "Download failed. Please add COOKIES_CONTENT to Railway environment variables."}), 500
+
+    try:
+        import tempfile, threading, time
+        from flask import send_file
+        from pathlib import Path
+
+        out_dir = Path(f"/tmp/izutube_{os.urandom(4).hex()}")
+        out_dir.mkdir(exist_ok=True)
+
+        if is_audio:
+            ydl_opts = get_ydl_opts({
+                "format": "bestaudio/best",
+                "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
+                "postprocessors": [{
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "320",
+                }],
+            })
+        else:
+            ydl_opts = get_ydl_opts({
+                "format": f"bestvideo[height<={quality}]+bestaudio/best",
+                "outtmpl": str(out_dir / "%(title)s.%(ext)s"),
+                "merge_output_format": "mp4",
+            })
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+        files = list(out_dir.iterdir())
+        if not files:
+            return jsonify({"error": "Download failed — no file produced"}), 500
+
+        file_path = str(files[0])
+        ext = "mp3" if is_audio else "mp4"
+        title = data.get("title", "download").replace("/", "-")
+
+        # Auto-delete after 5 minutes
+        def _cleanup():
+            time.sleep(300)
+            try:
+                os.remove(file_path)
+                out_dir.rmdir()
+            except Exception:
+                pass
+        threading.Thread(target=_cleanup, daemon=True).start()
+
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=f"{title}.{ext}",
+            mimetype="audio/mpeg" if ext == "mp3" else "video/mp4",
+        )
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
