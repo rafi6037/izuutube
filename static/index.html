@@ -3,69 +3,48 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>YTDL — Download Your Videos</title>
+<title>IzuTube — Made with love for Izhat 🌿</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --border: #1e1e2e;
-    --accent: #c8f135;
-    --accent2: #7c3aed;
-    --text: #e8e8f0;
-    --muted: #5a5a7a;
-    --error: #ff4d6d;
-    --radius: 16px;
+    --bg: #0d1a12;
+    --surface: #111f16;
+    --surface2: #162a1c;
+    --border: #1e3526;
+    --green: #4ade80;
+    --green-soft: #86efac;
+    --green-dim: rgba(74,222,128,0.08);
+    --pink: #fda4af;
+    --text: #e8f5ee;
+    --muted: #5a7a65;
+    --radius: 18px;
   }
+
+  html { scroll-behavior: smooth; }
 
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'DM Mono', monospace;
+    font-family: 'DM Sans', sans-serif;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 60px 20px 80px;
+    padding: 48px 16px 80px;
     overflow-x: hidden;
   }
 
-  /* Animated background grid */
+  /* Background */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background-image:
-      linear-gradient(rgba(200,241,53,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(200,241,53,0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .glow-orb {
-    position: fixed;
-    width: 600px;
-    height: 600px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%);
-    top: -200px;
-    right: -200px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .glow-orb2 {
-    position: fixed;
-    width: 400px;
-    height: 400px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(200,241,53,0.06) 0%, transparent 70%);
-    bottom: -100px;
-    left: -100px;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(74,222,128,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 100% 80%, rgba(253,164,175,0.05) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
   }
@@ -74,68 +53,59 @@
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 680px;
+    max-width: 620px;
   }
 
-  /* Header */
+  /* ── Header ── */
   .header {
     text-align: center;
-    margin-bottom: 56px;
-    animation: fadeUp 0.6s ease both;
+    margin-bottom: 44px;
+    animation: fadeUp 0.7s ease both;
   }
 
-  .logo-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(200,241,53,0.08);
-    border: 1px solid rgba(200,241,53,0.2);
-    border-radius: 999px;
-    padding: 6px 16px;
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 24px;
-  }
-
-  .logo-badge .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    animation: pulse 2s ease infinite;
+  .hearts {
+    font-size: 22px;
+    letter-spacing: 6px;
+    margin-bottom: 16px;
+    display: block;
+    animation: float 3s ease-in-out infinite;
   }
 
   h1 {
-    font-family: 'Syne', sans-serif;
-    font-size: clamp(44px, 8vw, 72px);
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.03em;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(38px, 10vw, 64px);
+    font-weight: 700;
+    line-height: 1.05;
     color: #fff;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
   }
 
-  h1 span {
-    color: var(--accent);
-    position: relative;
+  h1 em {
+    font-style: italic;
+    color: var(--green);
   }
 
-  .subtitle {
-    margin-top: 16px;
-    font-size: 14px;
+  .tagline {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: clamp(13px, 3.5vw, 16px);
     color: var(--muted);
-    letter-spacing: 0.02em;
+    margin-top: 10px;
     line-height: 1.6;
   }
 
-  /* Card */
+  .tagline span {
+    color: var(--pink);
+  }
+
+  /* ── Card ── */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 32px;
-    animation: fadeUp 0.6s 0.1s ease both;
+    padding: clamp(20px, 5vw, 32px);
+    animation: fadeUp 0.7s 0.1s ease both;
     position: relative;
     overflow: hidden;
   }
@@ -143,72 +113,76 @@
   .card::before {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0;
+    top: 0; left: 10%; right: 10%;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(200,241,53,0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(74,222,128,0.4), transparent);
   }
 
-  /* Input group */
-  .input-group {
+  /* ── Input ── */
+  .input-wrap {
     display: flex;
     gap: 10px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
   }
 
   .url-input {
     flex: 1;
+    min-width: 0;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 18px;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
     color: var(--text);
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
-    min-width: 0;
   }
 
-  .url-input::placeholder { color: var(--muted); }
+  .url-input::placeholder { color: var(--muted); font-size: 13px; }
 
   .url-input:focus {
-    border-color: rgba(200,241,53,0.4);
-    box-shadow: 0 0 0 3px rgba(200,241,53,0.06);
+    border-color: rgba(74,222,128,0.45);
+    box-shadow: 0 0 0 3px rgba(74,222,128,0.07);
   }
 
   .btn-fetch {
-    background: var(--accent);
-    color: #0a0a0f;
+    background: var(--green);
+    color: #0d1a12;
     border: none;
-    border-radius: 10px;
-    padding: 14px 24px;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px;
+    border-radius: 12px;
+    padding: 14px 22px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.05em;
     cursor: pointer;
-    transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+    transition: transform 0.15s, box-shadow 0.2s, opacity 0.15s;
     white-space: nowrap;
     flex-shrink: 0;
   }
 
-  .btn-fetch:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(200,241,53,0.25); }
+  .btn-fetch:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(74,222,128,0.25); }
   .btn-fetch:active { transform: translateY(0); }
   .btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  /* Video info */
+  /* ── Video Info ── */
   .video-info {
     display: none;
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: 14px;
+    margin-bottom: 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
     animation: fadeUp 0.3s ease both;
   }
 
   .video-info.visible { display: flex; }
 
   .thumbnail {
-    width: 120px;
-    height: 68px;
+    width: 110px;
+    height: 62px;
     object-fit: cover;
     border-radius: 8px;
     flex-shrink: 0;
@@ -218,32 +192,28 @@
   .video-meta { flex: 1; min-width: 0; }
 
   .video-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
     font-weight: 600;
     color: #fff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
   }
 
-  .video-uploader {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
+  .video-uploader { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
 
   .video-duration {
     font-size: 11px;
-    color: var(--accent);
-    background: rgba(200,241,53,0.08);
-    border-radius: 4px;
+    color: var(--green);
+    background: var(--green-dim);
+    border-radius: 6px;
     padding: 2px 8px;
     display: inline-block;
   }
 
-  /* Format selector */
+  /* ── Formats ── */
   .format-section { display: none; }
   .format-section.visible { display: block; }
 
@@ -265,163 +235,217 @@
   .format-chip {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 13px;
     color: var(--muted);
     cursor: pointer;
     transition: all 0.15s;
     user-select: none;
   }
 
-  .format-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .format-chip:hover { border-color: var(--green); color: var(--green); }
 
   .format-chip.selected {
-    background: rgba(200,241,53,0.1);
-    border-color: var(--accent);
-    color: var(--accent);
+    background: var(--green-dim);
+    border-color: var(--green);
+    color: var(--green);
   }
 
-  /* Download button */
+  /* ── Download Button ── */
   .btn-download {
     width: 100%;
-    background: linear-gradient(135deg, var(--accent) 0%, #a8d520 100%);
-    color: #0a0a0f;
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    color: #0d1a12;
     border: none;
-    border-radius: 12px;
-    padding: 16px;
-    font-family: 'Syne', sans-serif;
+    border-radius: 14px;
+    padding: 17px;
+    font-family: 'DM Sans', sans-serif;
     font-size: 15px;
     font-weight: 700;
-    letter-spacing: 0.05em;
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
+    letter-spacing: 0.02em;
   }
 
-  .btn-download:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(200,241,53,0.3); }
+  .btn-download:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(74,222,128,0.28); }
   .btn-download:active { transform: translateY(0); }
   .btn-download:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 
-  /* Progress */
+  /* ── Progress ── */
   .progress-wrap {
     display: none;
-    margin-top: 20px;
+    margin-top: 18px;
     animation: fadeUp 0.3s ease both;
   }
 
   .progress-wrap.visible { display: block; }
 
+  .progress-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .progress-bar-bg {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 999px;
-    height: 8px;
+    height: 7px;
     overflow: hidden;
-    margin-bottom: 10px;
   }
 
   .progress-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent), #a8d520);
-    border-radius: 999px;
     width: 0%;
-    transition: width 0.4s ease;
+    background: linear-gradient(90deg, #4ade80, #86efac);
+    border-radius: 999px;
+    transition: width 0.5s ease;
     position: relative;
   }
 
-  .progress-bar-fill::after {
-    content: '';
-    position: absolute;
-    right: 0; top: 0; bottom: 0;
-    width: 40px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
-    border-radius: 999px;
-    animation: shimmer 1s ease infinite;
+  .progress-bar-fill.indeterminate {
+    width: 40% !important;
+    animation: indeterminate 1.4s ease infinite;
   }
 
-  .progress-stats {
-    display: flex;
-    justify-content: space-between;
-    font-size: 11px;
-    color: var(--muted);
-  }
-
-  .progress-pct { color: var(--accent); font-weight: 500; }
-
-  /* Status message */
+  /* ── Status ── */
   .status-msg {
     text-align: center;
     font-size: 13px;
     margin-top: 16px;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
     display: none;
+    line-height: 1.5;
   }
 
   .status-msg.visible { display: block; }
-  .status-msg.success { background: rgba(200,241,53,0.08); color: var(--accent); border: 1px solid rgba(200,241,53,0.15); }
-  .status-msg.error { background: rgba(255,77,109,0.08); color: var(--error); border: 1px solid rgba(255,77,109,0.15); }
-  .status-msg.info { background: rgba(124,58,237,0.08); color: #a78bfa; border: 1px solid rgba(124,58,237,0.2); }
+  .status-msg.success { background: rgba(74,222,128,0.08); color: var(--green-soft); border: 1px solid rgba(74,222,128,0.15); }
+  .status-msg.error { background: rgba(255,100,100,0.08); color: #fca5a5; border: 1px solid rgba(255,100,100,0.15); }
+  .status-msg.info { background: rgba(253,164,175,0.07); color: var(--pink); border: 1px solid rgba(253,164,175,0.15); }
 
-  /* Footer */
-  .footer {
-    margin-top: 40px;
+  /* ── Love Note ── */
+  .love-note {
+    margin-top: 32px;
     text-align: center;
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-    animation: fadeUp 0.6s 0.3s ease both;
+    padding: 24px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    animation: fadeUp 0.7s 0.25s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .love-note::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(253,164,175,0.3), transparent);
+  }
+
+  .love-note-emoji { font-size: 28px; margin-bottom: 10px; display: block; animation: float 4s ease-in-out infinite; }
+
+  .love-note-text {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: clamp(14px, 3.5vw, 16px);
+    color: #c4d9cc;
     line-height: 1.8;
   }
 
-  /* Spinner */
+  .love-note-text strong {
+    color: var(--pink);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  .love-note-sig {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    animation: fadeUp 0.7s 0.35s ease both;
+    line-height: 1.8;
+  }
+
+  /* ── Spinner ── */
   .spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(10,10,15,0.3);
-    border-top-color: #0a0a0f;
+    border: 2px solid rgba(13,26,18,0.3);
+    border-top-color: #0d1a12;
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     flex-shrink: 0;
   }
 
+  /* ── Animations ── */
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-  @keyframes shimmer { 0% { opacity:0; } 50% { opacity:1; } 100% { opacity:0; } }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(18px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(300%); }
+  }
+
+  /* ── Mobile tweaks ── */
+  @media (max-width: 420px) {
+    .input-wrap { flex-direction: column; }
+    .btn-fetch { width: 100%; }
+    .thumbnail { width: 90px; height: 52px; }
   }
 </style>
 </head>
 <body>
-<div class="glow-orb"></div>
-<div class="glow-orb2"></div>
 
 <div class="container">
+
+  <!-- Header -->
   <div class="header">
-    <div class="logo-badge"><span class="dot"></span> Ready to download</div>
-    <h1>YT<span>DL</span></h1>
-    <p class="subtitle">Paste any YouTube link · Choose your format · Download instantly</p>
+    <span class="hearts">🌿 💚 🌿</span>
+    <h1>Izu<em>Tube</em></h1>
+    <p class="tagline">
+      Made with love, just for <span>Izhat</span> ✨<br/>
+      Download any YouTube video or song — fast & free
+    </p>
   </div>
 
+  <!-- Main Card -->
   <div class="card">
+
     <!-- URL Input -->
-    <div class="input-group">
+    <div class="input-wrap">
       <input
         class="url-input"
         id="urlInput"
-        type="text"
-        placeholder="https://youtube.com/watch?v=..."
+        type="url"
+        placeholder="Paste a YouTube link here..."
         autocomplete="off"
         spellcheck="false"
+        inputmode="url"
       />
-      <button class="btn-fetch" id="fetchBtn" onclick="fetchInfo()">Fetch</button>
+      <button class="btn-fetch" id="fetchBtn" onclick="fetchInfo()">Fetch ✦</button>
     </div>
 
     <!-- Video Info -->
@@ -436,7 +460,7 @@
 
     <!-- Format Selector -->
     <div class="format-section" id="formatSection">
-      <div class="section-label">Select Format</div>
+      <div class="section-label">Choose format</div>
       <div class="format-grid" id="formatGrid"></div>
       <button class="btn-download" id="downloadBtn" onclick="startDownload()">
         <span id="downloadBtnText">Download</span>
@@ -445,24 +469,36 @@
 
     <!-- Progress -->
     <div class="progress-wrap" id="progressWrap">
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressFill"></div>
+      <div class="progress-label">
+        <span id="progressStatus">Preparing your download...</span>
       </div>
-      <div class="progress-stats">
-        <span id="progressSpeed">—</span>
-        <span class="progress-pct" id="progressPct">0%</span>
-        <span id="progressEta">—</span>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill indeterminate" id="progressFill"></div>
       </div>
     </div>
 
     <!-- Status -->
     <div class="status-msg" id="statusMsg"></div>
+
   </div>
 
-  <div class="footer">
-    For personal use only · Download your own content<br/>
-    Powered by yt-dlp · Hosted on Railway
+  <!-- Love Note -->
+  <div class="love-note">
+    <span class="love-note-emoji">💌</span>
+    <p class="love-note-text">
+      Hey <strong>Izhat</strong>, every song you love and every video you save —<br/>
+      I just wanted to make something that makes your day<br/>
+      a little easier, and a little more <strong>you</strong>. 🌿
+    </p>
+    <p class="love-note-sig">— built with love, from Rafi</p>
   </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    IzuTube · For personal use only<br/>
+    Powered by cobalt.tools · Hosted on Railway
+  </div>
+
 </div>
 
 <script>
@@ -471,13 +507,16 @@
 
   function formatDuration(secs) {
     if (!secs) return '';
-    const m = Math.floor(secs / 60), s = secs % 60;
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     return `${m}:${String(s).padStart(2,'0')}`;
   }
 
-  function showStatus(msg, type='info') {
+  function showStatus(msg, type = 'info') {
     const el = document.getElementById('statusMsg');
-    el.textContent = msg;
+    el.innerHTML = msg;
     el.className = `status-msg visible ${type}`;
   }
 
@@ -485,9 +524,15 @@
     document.getElementById('statusMsg').className = 'status-msg';
   }
 
+  function setProgress(visible, label = '') {
+    const wrap = document.getElementById('progressWrap');
+    wrap.className = visible ? 'progress-wrap visible' : 'progress-wrap';
+    document.getElementById('progressStatus').textContent = label;
+  }
+
   async function fetchInfo() {
     const url = document.getElementById('urlInput').value.trim();
-    if (!url) return showStatus('Please enter a YouTube URL.', 'error');
+    if (!url) return showStatus('Please paste a YouTube link first 🌿', 'error');
 
     const btn = document.getElementById('fetchBtn');
     btn.disabled = true;
@@ -495,8 +540,9 @@
     hideStatus();
     document.getElementById('videoInfo').className = 'video-info';
     document.getElementById('formatSection').className = 'format-section';
-    document.getElementById('progressWrap').className = 'progress-wrap';
+    setProgress(false);
     selectedFormat = null;
+    videoData = null;
 
     try {
       const res = await fetch('/api/info', {
@@ -505,21 +551,19 @@
         body: JSON.stringify({ url }),
       });
       const data = await res.json();
-      if (data.error) return showStatus(data.error, 'error');
+      if (data.error) return showStatus('⚠ ' + data.error, 'error');
 
       videoData = data;
 
-      // Show video info
       document.getElementById('thumbnail').src = data.thumbnail || '';
       document.getElementById('videoTitle').textContent = data.title || 'Unknown';
       document.getElementById('videoUploader').textContent = data.uploader || '';
       document.getElementById('videoDuration').textContent = formatDuration(data.duration);
       document.getElementById('videoInfo').className = 'video-info visible';
 
-      // Build format chips
       const grid = document.getElementById('formatGrid');
       grid.innerHTML = '';
-      data.formats.forEach(fmt => {
+      (data.formats || []).forEach(fmt => {
         const chip = document.createElement('div');
         chip.className = 'format-chip';
         chip.textContent = fmt.label;
@@ -532,43 +576,30 @@
         grid.appendChild(chip);
       });
 
-      // Auto-select first
-      if (data.formats.length) {
-        grid.firstChild.click();
-      }
-
+      if (grid.firstChild) grid.firstChild.click();
       document.getElementById('formatSection').className = 'format-section visible';
 
     } catch (e) {
-      showStatus('Failed to connect to server.', 'error');
+      showStatus('Could not connect to server. Please try again.', 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Fetch';
+      btn.textContent = 'Fetch ✦';
     }
   }
 
   async function startDownload() {
-    if (!videoData || !selectedFormat) return showStatus('Please select a format.', 'error');
+    if (!videoData || !selectedFormat) return showStatus('Please select a format first 🌿', 'error');
 
     const url = document.getElementById('urlInput').value.trim();
     const btn = document.getElementById('downloadBtn');
     const btnText = document.getElementById('downloadBtnText');
 
     btn.disabled = true;
-    btnText.innerHTML = '<div class="spinner"></div> Downloading...';
+    btnText.innerHTML = '<div class="spinner"></div> Getting link...';
     hideStatus();
-
-    const progressWrap = document.getElementById('progressWrap');
-    const progressFill = document.getElementById('progressFill');
-    const progressPct = document.getElementById('progressPct');
-    const progressSpeed = document.getElementById('progressSpeed');
-    const progressEta = document.getElementById('progressEta');
-
-    progressWrap.className = 'progress-wrap visible';
-    progressFill.style.width = '0%';
+    setProgress(true, 'Fetching your download link...');
 
     try {
-      // Trigger download
       const res = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -579,37 +610,40 @@
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        showStatus(err.error || 'Download failed.', 'error');
+      const data = await res.json();
+
+      if (data.error) {
+        showStatus('⚠ ' + data.error, 'error');
+        setProgress(false);
         return;
       }
 
-      // Animate to 100%
-      progressFill.style.width = '100%';
-      progressPct.textContent = '100%';
+      if (data.url) {
+        setProgress(true, 'Opening download... 💚');
+        // Trigger download
+        const a = document.createElement('a');
+        a.href = data.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
 
-      // Blob download
-      const blob = await res.blob();
-      const ext = selectedFormat.id === 'mp3' ? 'mp3' : 'mp4';
-      const filename = `${videoData.title || 'download'}.${ext}`;
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
-
-      showStatus('✓ Download complete!', 'success');
+        setTimeout(() => {
+          setProgress(false);
+          showStatus('✓ Download started! Check your downloads folder 🌿', 'success');
+        }, 1500);
+      }
 
     } catch (e) {
-      showStatus('Download failed: ' + e.message, 'error');
+      showStatus('Something went wrong. Please try again.', 'error');
+      setProgress(false);
     } finally {
       btn.disabled = false;
       btnText.textContent = 'Download';
     }
   }
 
-  // Allow Enter key on input
   document.getElementById('urlInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') fetchInfo();
   });
