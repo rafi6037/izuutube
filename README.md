@@ -47,3 +47,4 @@ python app.py
 - Files are auto-deleted from server after 5 minutes
 - MP3 exports at 320kbps
 - Video merges best available video + audio into MP4
+- For restricted videos, set `COOKIES_CONTENT` in Railway. Both Netscape cookie file content and JSON cookie exports are supported.
