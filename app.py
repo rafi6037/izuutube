@@ -27,10 +27,10 @@ else:
 
 
 def get_ydl_opts(extra=None):
-    """Base yt-dlp options, with cookies if available."""
     opts = {
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {"youtube": {"skip": ["dash", "hls"]}},
     }
     if COOKIES_FILE:
         opts["cookiefile"] = COOKIES_FILE
@@ -46,39 +46,36 @@ def index():
 
 @app.route("/api/info", methods=["POST"])
 def get_info():
-    """Fetch video metadata using yt-dlp (with cookies)."""
+    """Fetch video metadata — yt-dlp with cookies, simplified format list."""
     data = request.json or {}
     url = data.get("url", "").strip()
     if not url:
         return jsonify({"error": "No URL provided"}), 400
 
-    opts = get_ydl_opts({"skip_download": True})
+    opts = get_ydl_opts({
+        "skip_download": True,
+        "format": "best",  # don't evaluate all formats, just get metadata
+    })
 
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            formats = []
-            seen = set()
-            for f in info.get("formats", []):
-                height = f.get("height")
-                if height and f.get("vcodec") != "none" and height not in seen:
-                    seen.add(height)
-                    formats.append({
-                        "id": f"{height}p",
-                        "label": f"{height}p Video",
-                        "type": "video",
-                        "height": height,
-                    })
 
-            formats = sorted(formats, key=lambda x: x["height"], reverse=True)
-            formats.insert(0, {"id": "mp3", "label": "MP3 — Audio Only", "type": "audio"})
+            # Build a simple fixed format list — cobalt handles actual quality selection
+            formats = [
+                {"id": "mp3",  "label": "MP3 — Audio Only", "type": "audio"},
+                {"id": "1080p","label": "1080p Video",       "type": "video", "height": 1080},
+                {"id": "720p", "label": "720p Video",        "type": "video", "height": 720},
+                {"id": "480p", "label": "480p Video",        "type": "video", "height": 480},
+                {"id": "360p", "label": "360p Video",        "type": "video", "height": 360},
+            ]
 
             return jsonify({
-                "title": info.get("title", "video"),
+                "title":     info.get("title", "video"),
                 "thumbnail": info.get("thumbnail"),
-                "duration": info.get("duration"),
-                "uploader": info.get("uploader"),
-                "formats": formats,
+                "duration":  info.get("duration"),
+                "uploader":  info.get("uploader"),
+                "formats":   formats,
             })
 
     except Exception as e:
@@ -87,10 +84,7 @@ def get_info():
 
 @app.route("/api/download", methods=["POST"])
 def download():
-    """
-    Try cobalt.tools first (fast, no server load).
-    Fall back to yt-dlp with cookies if cobalt fails.
-    """
+    """Try cobalt.tools first, fall back to yt-dlp with cookies."""
     data = request.json or {}
     url = data.get("url", "").strip()
     fmt = data.get("format", "mp3")
@@ -127,14 +121,14 @@ def download():
             if items:
                 return jsonify({"url": items[0].get("url")})
 
-        print(f"[IzuTube] cobalt returned status={status}, falling back to yt-dlp")
+        print(f"[IzuTube] cobalt status={status}, falling back to yt-dlp")
 
     except Exception as e:
         print(f"[IzuTube] cobalt error: {e} — falling back to yt-dlp")
 
     # ── Fallback: yt-dlp with cookies ──
     if not COOKIES_FILE:
-        return jsonify({"error": "Download failed. Please add COOKIES_CONTENT to Railway environment variables."}), 500
+        return jsonify({"error": "Download failed. Add COOKIES_CONTENT to Railway environment variables."}), 500
 
     try:
         out_dir = Path(f"/tmp/izutube_{os.urandom(4).hex()}")
@@ -200,7 +194,6 @@ def download():
         ext = "mp3" if is_audio else "mp4"
         title = data.get("title", "download").replace("/", "-")
 
-        # Auto-delete after 5 minutes
         def _cleanup():
             time.sleep(300)
             try:
