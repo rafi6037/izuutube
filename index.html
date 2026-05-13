@@ -2,177 +2,259 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IzuTube</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>For Izu Pakhi 🌸</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
   <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --rose:    #c0627a;
+      --blush:   #f7dde6;
+      --petal:   #eedde8;
+      --cream:   #fdf6f0;
+      --deep:    #3b1f2b;
+      --soft:    #9e6b7e;
+      --gold:    #c9956a;
+    }
+
     body {
-      margin: 0;
+      background: var(--cream);
+      font-family: 'Lato', sans-serif;
+      font-weight: 300;
+      color: var(--deep);
       min-height: 100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: #0b0f14;
-      color: #e8eef5;
-      display: grid;
-      place-items: center;
-      padding: 20px;
+      overflow-x: hidden;
     }
+
+    /* ── Floating petals ── */
+    .petals-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .petal {
+      position: absolute;
+      width: 10px; height: 14px;
+      background: radial-gradient(ellipse at 40% 40%, #f5c2d0 0%, #e8a0b4 60%, transparent 100%);
+      border-radius: 50% 10% 50% 10%;
+      opacity: 0;
+      animation: fall linear infinite;
+    }
+    @keyframes fall {
+      0%   { transform: translateY(-40px) rotate(0deg) scale(0.8); opacity: 0; }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.4; }
+      100% { transform: translateY(110vh) rotate(360deg) scale(1.1); opacity: 0; }
+    }
+
+    /* ── Layout ── */
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 40px; }
+
+    .love-tag {
+      display: inline-block;
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 13px;
+      letter-spacing: 3px;
+      color: var(--soft);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.2s forwards;
+    }
+
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 300;
+      font-size: clamp(2rem, 6vw, 3rem);
+      line-height: 1.1;
+      color: var(--rose);
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.4s forwards;
+    }
+    h1 span { color: var(--gold); font-style: italic; }
+
+    .sub {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--soft);
+      letter-spacing: 1px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.6s forwards;
+    }
+
+    .divider {
+      margin: 20px auto;
+      width: 60px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--rose), transparent);
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.7s forwards;
+    }
+
+    .love-quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 15px;
+      color: var(--soft);
+      max-width: 420px;
+      margin: 0 auto;
+      line-height: 1.8;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.9s forwards;
+    }
+
+    /* ── Card ── */
     .card {
-      width: 100%;
-      max-width: 560px;
-      background: #111820;
-      border: 1px solid #1f2a36;
+      background: #fff;
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 0 4px 40px rgba(192, 98, 122, 0.08), 0 1px 4px rgba(192, 98, 122, 0.06);
+      border: 1px solid rgba(192, 98, 122, 0.1);
+      opacity: 0;
+      animation: fadeUp 0.8s ease 1.1s forwards;
+    }
+
+    .card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px;
+      font-style: italic;
+      color: var(--rose);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .card-title::before,
+    .card-title::after { content: " ✿ "; color: var(--gold); font-size: 12px; }
+
+    /* ── iframe wrapper ── */
+    .iframe-wrap {
       border-radius: 14px;
-      padding: 20px;
+      overflow: hidden;
+      background: var(--blush);
+      border: 1px solid rgba(192, 98, 122, 0.15);
     }
-    h1 { margin: 0 0 14px; font-size: 1.4rem; }
-    p { margin: 0 0 16px; color: #9fb0c3; font-size: 0.95rem; }
-    .grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .iframe-wrap iframe { display: block; }
+
+    /* ── Footer love note ── */
+    .love-note {
+      text-align: center;
+      margin-top: 44px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 1.4s forwards;
     }
-    .full { grid-column: 1 / -1; }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      color: #9fb0c3;
-      font-size: 0.82rem;
+    .love-note p {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 15px;
+      color: var(--soft);
+      line-height: 2;
     }
-    input, select, button {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid #2a3747;
-      background: #0c121a;
-      color: #e8eef5;
-      padding: 10px 12px;
-      font: inherit;
+    .love-note .hearts {
+      font-size: 22px;
+      letter-spacing: 6px;
+      margin-top: 8px;
+      animation: pulse 2.4s ease-in-out infinite;
     }
-    button {
-      cursor: pointer;
-      background: #22c55e;
-      color: #05210e;
-      font-weight: 700;
-      border: 0;
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
     }
-    button:hover { filter: brightness(1.05); }
-    .msg { margin-top: 12px; font-size: 0.9rem; color: #fca5a5; min-height: 1.2em; }
-    .hint { margin-top: 10px; color: #7f93a9; font-size: 0.8rem; word-break: break-all; }
+    .love-note .sig {
+      margin-top: 16px;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: var(--rose);
+      text-transform: uppercase;
+    }
+
+    /* ── Scroll ribbon ── */
+    .ribbon {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--blush), var(--rose), var(--gold), var(--rose), var(--blush));
+      background-size: 200% 100%;
+      animation: slide 4s linear infinite;
+    }
+    @keyframes slide {
+      0%   { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
-  <main class="card">
-    <h1>IzuTube</h1>
-    <p>Frontend-only downloader using <code>https://apisyu.com/single/{TYPE}/{VIDEO_ID}</code>.</p>
 
-    <form id="downloadForm" class="grid">
-      <div class="full">
-        <label for="video">YouTube URL or Video ID</label>
-        <input id="video" type="text" placeholder="https://www.youtube.com/watch?v=TW9d8vYrVFQ" required />
+  <!-- Floating petals -->
+  <div class="petals-bg" id="petalsContainer"></div>
+
+  <div class="wrapper">
+
+    <header>
+      <div class="love-tag">made with love</div>
+      <h1>For my <span>Izu Pakhi</span> 🌸</h1>
+      <p class="sub">your little corner of the internet</p>
+      <div class="divider"></div>
+      <p class="love-quote">
+        "Every song you love, every video you cherish —<br>
+        I want you to have it, always, whenever you wish."
+      </p>
+    </header>
+
+    <div class="card">
+      <div class="card-title">Download your favourites</div>
+      <div class="iframe-wrap">
+        <iframe
+          src="https://apisyu.com/widget/TW9d8vYrVFQ"
+          width="100%"
+          height="400"
+          allowtransparency="true"
+          scrolling="no"
+          style="border:none">
+        </iframe>
       </div>
+    </div>
 
-      <div>
-        <label for="type">Type</label>
-        <select id="type">
-          <option value="MP3" selected>MP3</option>
-          <option value="MP4">MP4</option>
-        </select>
-      </div>
+    <div class="love-note">
+      <p>
+        You light up every room, every song, every ordinary day.<br>
+        This little page is yours — just like my heart is.
+      </p>
+      <div class="hearts">🌸 💗 🌸</div>
+      <div class="sig">with all my love · always yours</div>
+    </div>
 
-      <div>
-        <label for="audio">Audio</label>
-        <input id="audio" type="text" value="320" />
-      </div>
+  </div>
 
-      <div>
-        <label for="theme">Theme</label>
-        <select id="theme">
-          <option value="dark" selected>dark</option>
-          <option value="light">light</option>
-        </select>
-      </div>
-
-      <div>
-        <label for="lang">Language</label>
-        <input id="lang" type="text" value="English" />
-      </div>
-
-      <div class="full">
-        <button type="submit">Download</button>
-      </div>
-    </form>
-
-    <div id="msg" class="msg"></div>
-    <div id="urlHint" class="hint"></div>
-  </main>
+  <div class="ribbon"></div>
 
   <script>
-    const VIDEO_ID_REGEX = /^[A-Za-z0-9_-]{11}$/;
-
-    function extractVideoId(input) {
-      const value = (input || '').trim();
-      if (!value) return null;
-      if (VIDEO_ID_REGEX.test(value)) return value;
-
-      let parsed;
-      try {
-        parsed = new URL(value);
-      } catch (_) {
-        return null;
-      }
-
-      const host = parsed.hostname.toLowerCase();
-      if (host === 'youtu.be' || host === 'www.youtu.be') {
-        const id = parsed.pathname.split('/').filter(Boolean)[0];
-        return VIDEO_ID_REGEX.test(id || '') ? id : null;
-      }
-
-      const v = parsed.searchParams.get('v');
-      if (VIDEO_ID_REGEX.test(v || '')) return v;
-
-      const parts = parsed.pathname.split('/').filter(Boolean);
-      const markerIndex = parts.findIndex((p) => ['shorts', 'embed', 'live'].includes(p));
-      if (markerIndex !== -1) {
-        const id = parts[markerIndex + 1];
-        return VIDEO_ID_REGEX.test(id || '') ? id : null;
-      }
-
-      return null;
+    // Generate floating petals
+    const container = document.getElementById('petalsContainer');
+    const count = 22;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'petal';
+      p.style.left       = Math.random() * 100 + 'vw';
+      p.style.top        = '-20px';
+      p.style.animationDuration  = (6 + Math.random() * 10) + 's';
+      p.style.animationDelay     = (Math.random() * 12) + 's';
+      p.style.width      = (8 + Math.random() * 8)  + 'px';
+      p.style.height     = (10 + Math.random() * 10) + 'px';
+      p.style.transform  = 'rotate(' + Math.random() * 360 + 'deg)';
+      container.appendChild(p);
     }
-
-    function buildApiUrl({ type, videoId, audio, theme, lang }) {
-      const base = `https://apisyu.com/single/${encodeURIComponent(type)}/${encodeURIComponent(videoId)}`;
-      const params = new URLSearchParams();
-      if (audio) params.set('audio', audio);
-      if (theme) params.set('theme', theme);
-      if (lang) params.set('lang', lang);
-      const query = params.toString();
-      return query ? `${base}?${query}` : base;
-    }
-
-    document.getElementById('downloadForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const msg = document.getElementById('msg');
-      const urlHint = document.getElementById('urlHint');
-      msg.textContent = '';
-
-      const videoInput = document.getElementById('video').value;
-      const type = document.getElementById('type').value;
-      const audio = document.getElementById('audio').value.trim();
-      const theme = document.getElementById('theme').value;
-      const lang = document.getElementById('lang').value.trim();
-
-      const videoId = extractVideoId(videoInput);
-      if (!videoId) {
-        msg.textContent = 'Invalid YouTube URL or Video ID.';
-        urlHint.textContent = '';
-        return;
-      }
-
-      const apiUrl = buildApiUrl({ type, videoId, audio, theme, lang });
-      urlHint.textContent = apiUrl;
-      window.open(apiUrl, '_blank', 'noopener,noreferrer');
-    });
   </script>
 </body>
 </html>
