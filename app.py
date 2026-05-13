@@ -136,7 +136,7 @@ def find_https_download_link(payload, *, seen=None, depth=0, depth_limit=MAX_RES
 def get_fallback_download_link(url, selected_format):
     """Fallback direct media URL resolver using yt-dlp."""
     if selected_format == "mp3":
-        preferred_format = "bestaudio[ext=m4a]/bestaudio/best"
+        preferred_format = "bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio/best"
     else:
         preferred_format = "best[ext=mp4][acodec!=none][vcodec!=none]/best[acodec!=none][vcodec!=none]/best"
 
@@ -265,8 +265,7 @@ def download():
                         if value:
                             response_payload[key] = value
                 return jsonify(response_payload)
-            provider_error_message = payload.get("error") if isinstance(payload, dict) else None
-            provider_error_message = provider_error_message or "Failed to get download link"
+            provider_error_message = (payload.get("error") if isinstance(payload, dict) else None) or "Failed to get download link"
 
         text = res.text.strip()
         if is_valid_https_url(text):
