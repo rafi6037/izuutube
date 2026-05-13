@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import yt_dlp
+from yt_dlp.utils import DownloadError
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -151,7 +152,7 @@ def get_fallback_download_link(url, selected_format):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-    except Exception as e:
+    except DownloadError as e:
         logger.warning("[IzuTube] yt-dlp extraction failed: %s", e)
         return None
 
