@@ -145,7 +145,7 @@ def get_fallback_download_link(url, selected_format):
         "no_warnings": True,
         "noplaylist": True,
         "skip_download": True,
-        "socket_timeout": 20,
+        "socket_timeout": 12,
         "format": preferred_format,
     }
 
