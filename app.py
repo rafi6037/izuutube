@@ -1,6 +1,8 @@
 import os
 import logging
 import requests
+import yt_dlp
+from yt_dlp.utils import YoutubeDLError
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -131,6 +133,60 @@ def find_https_download_link(payload, *, seen=None, depth=0, depth_limit=MAX_RES
     return None
 
 
+def get_fallback_download_link(url, selected_format):
+    """Fallback direct media URL resolver using yt-dlp."""
+    if selected_format == "mp3":
+        preferred_format = "bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio/best"
+    else:
+        preferred_format = "best[ext=mp4][acodec!=none][vcodec!=none]/best[acodec!=none][vcodec!=none]/best"
+
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "skip_download": True,
+        "socket_timeout": 12,
+        "format": preferred_format,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except YoutubeDLError as e:
+        logger.warning("[IzuTube] yt-dlp extraction failed: %s", e)
+        return None
+
+    if not isinstance(info, dict):
+        return None
+
+    def iter_valid_format_dicts():
+        direct_url = info.get("url")
+        if isinstance(direct_url, str) and is_valid_https_url(direct_url):
+            yield info
+
+        for key in ("requested_formats", "formats"):
+            for fmt in info.get(key) or []:
+                if not isinstance(fmt, dict):
+                    continue
+                fmt_url = fmt.get("url")
+                if isinstance(fmt_url, str) and is_valid_https_url(fmt_url):
+                    yield fmt
+
+    for fmt in iter_valid_format_dicts():
+        has_video = fmt.get("vcodec") not in (None, "none")
+        has_audio = fmt.get("acodec") not in (None, "none")
+        ext = (fmt.get("ext") or "").lower()
+
+        if selected_format == "mp3":
+            if has_audio and not has_video and ext in {"m4a", "mp3", "aac", "opus"}:
+                return fmt["url"]
+        else:
+            if has_audio and has_video and ext in {"mp4", "webm", "mkv"}:
+                return fmt["url"]
+
+    return None
+
+
 @app.route("/")
 def index():
     return app.send_static_file("index.html")
@@ -182,6 +238,7 @@ def download():
     if start_time is not None and end_time is not None and end_time <= start_time:
         return jsonify({"error": "etime must be greater than stime"}), 400
 
+    provider_error_message = None
     try:
         params = {"url": url, "format": selected_format}
         if start_time is not None:
@@ -208,19 +265,24 @@ def download():
                         if value:
                             response_payload[key] = value
                 return jsonify(response_payload)
-            message = payload.get("error") if isinstance(payload, dict) else None
-            return jsonify({"error": message or "Failed to get download link"}), 502
+            provider_error_message = (payload.get("error") if isinstance(payload, dict) else None) or "Failed to get download link"
 
         text = res.text.strip()
         if is_valid_https_url(text):
             return jsonify({"url": text, "download": text})
-        return jsonify({"error": "Unexpected response from download provider"}), 502
+        provider_error_message = "Unexpected response from download provider"
     except requests.RequestException as e:
         logger.warning("[IzuTube] Download provider request failed: %s", e)
-        return jsonify({"error": "Failed to contact download provider"}), 502
+        provider_error_message = "Failed to contact download provider"
     except Exception:
         logger.exception("[IzuTube] Unexpected error while fetching download link")
         return jsonify({"error": "Failed to get download link"}), 500
+
+    fallback_url = get_fallback_download_link(url, selected_format)
+    if fallback_url:
+        return jsonify({"url": fallback_url, "download": fallback_url})
+
+    return jsonify({"error": provider_error_message or "Failed to get download link"}), 502
 
 
 if __name__ == "__main__":
