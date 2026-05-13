@@ -456,78 +456,147 @@
   </div>
 
   <script>
-    let selectedFormat = 'mp3';
+  let selectedFormat = 'mp3';
 
-    document.querySelectorAll('.fmt-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedFormat = btn.dataset.fmt;
-      });
+  document.querySelectorAll('.fmt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.fmt-btn')
+        .forEach(b => b.classList.remove('active'));
+
+      btn.classList.add('active');
+      selectedFormat = btn.dataset.fmt;
     });
+  });
 
-    async function doConvert() {
-      const urlVal   = document.getElementById('urlInput').value.trim();
-      const stime    = document.getElementById('startTime').value.trim();
-      const etime    = document.getElementById('endTime').value.trim();
-      const status   = document.getElementById('status');
-      const resultBox = document.getElementById('resultBox');
-      const btn      = document.getElementById('convertBtn');
+  async function doConvert() {
+    const urlVal = document
+      .getElementById('urlInput')
+      .value
+      .trim();
 
-      resultBox.classList.remove('show');
-      status.className = 'status';
-      status.innerHTML = '';
+    const stime = document
+      .getElementById('startTime')
+      .value
+      .trim();
 
-      if (!urlVal) {
-        status.className = 'status error';
-        status.textContent = 'Please paste a YouTube link first 🌸';
-        return;
-      }
+    const etime = document
+      .getElementById('endTime')
+      .value
+      .trim();
 
-      if (!urlVal.includes('youtube.com') && !urlVal.includes('youtu.be')) {
-        status.className = 'status error';
-        status.textContent = 'That doesn\'t look like a YouTube link…';
-        return;
-      }
+    const status = document.getElementById('status');
+    const resultBox = document.getElementById('resultBox');
+    const btn = document.getElementById('convertBtn');
 
-      btn.disabled = true;
-      status.className = 'status loading';
-      status.innerHTML = '<span class="spinner"></span>Converting your song…';
+    // Reset UI
+    resultBox.classList.remove('show');
+    status.className = 'status';
+    status.innerHTML = '';
 
-      const params = new URLSearchParams({ url: urlVal, format: selectedFormat });
-      if (stime) params.set('stime', stime);
-      if (etime) params.set('etime', etime);
-
-      const apiUrl = `https://www.yt2mp3converter.net/apis/fetch.php?${params.toString()}`;
-
-      try {
-        const res = await fetch(apiUrl);
-
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-
-        const data = await res.json();
-
-        if (!data.download) throw new Error('No download link in response.');
-
-        status.innerHTML = '';
-        document.getElementById('resTitle').textContent = data.title || 'Your Song';
-        document.getElementById('resMeta').textContent =
-          [data.duration && `⏱ ${data.duration}`, data.filesize && `📦 ${data.filesize}`]
-            .filter(Boolean).join('   ');
-        document.getElementById('resLink').href = data.download;
-        resultBox.classList.add('show');
-
-      } catch (err) {
-        status.className = 'status error';
-        status.textContent = `Oops! ${err.message} — try again?`;
-      } finally {
-        btn.disabled = false;
-      }
+    // Validation
+    if (!urlVal) {
+      status.className = 'status error';
+      status.textContent =
+        'Please paste a YouTube link first 🌸';
+      return;
     }
 
-    document.getElementById('urlInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') doConvert();
+    if (
+      !urlVal.includes('youtube.com') &&
+      !urlVal.includes('youtu.be')
+    ) {
+      status.className = 'status error';
+      status.textContent =
+        'That doesn’t look like a YouTube link…';
+      return;
+    }
+
+    // Loading state
+    btn.disabled = true;
+    status.className = 'status loading';
+    status.innerHTML =
+      '<span class="spinner"></span>Converting your song…';
+
+    // Build query params
+    const params = new URLSearchParams({
+      url: urlVal,
+      format: selectedFormat
     });
-  </script>
+
+    if (stime) {
+      params.set('stime', stime);
+    }
+
+    if (etime) {
+      params.set('etime', etime);
+    }
+
+    // YOUR RAILWAY BACKEND
+    const apiUrl =
+      `https://yt-downloader-proxy-production.up.railway.app/download?${params.toString()}`;
+
+    try {
+      const res = await fetch(apiUrl);
+
+      if (!res.ok) {
+        throw new Error(
+          `Server returned ${res.status}`
+        );
+      }
+
+      const data = await res.json();
+
+      console.log('API Response:', data);
+
+      // Validate response
+      if (!data.download) {
+        throw new Error(
+          data.error ||
+          'No download link found.'
+        );
+      }
+
+      // Update result UI
+      status.innerHTML = '';
+
+      document.getElementById('resTitle')
+        .textContent =
+        data.title || 'Your Song';
+
+      document.getElementById('resMeta')
+        .textContent = [
+          data.duration &&
+            `⏱ ${data.duration}`,
+          data.filesize &&
+            `📦 ${data.filesize}`
+        ]
+          .filter(Boolean)
+          .join('   ');
+
+      document.getElementById('resLink')
+        .href = data.download;
+
+      resultBox.classList.add('show');
+
+    } catch (err) {
+      console.error(err);
+
+      status.className = 'status error';
+      status.textContent =
+        `Oops! ${err.message} — try again?`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // Press Enter to convert
+  document
+    .getElementById('urlInput')
+    .addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        doConvert();
+      }
+    });
+</script>
 </body>
 </html>
