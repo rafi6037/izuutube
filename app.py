@@ -148,40 +148,39 @@ def get_fallback_download_link(url, selected_format):
         "format": preferred_format,
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception:
+        return None
 
-    if isinstance(info, dict) and info.get("entries"):
-        info = next((entry for entry in info["entries"] if isinstance(entry, dict)), None) or {}
     if not isinstance(info, dict):
         return None
 
-    direct_url = info.get("url")
-    if isinstance(direct_url, str) and is_valid_https_url(direct_url):
-        return direct_url
+    def iter_valid_format_dicts():
+        direct_url = info.get("url")
+        if isinstance(direct_url, str) and is_valid_https_url(direct_url):
+            yield info
 
-    requested_formats = info.get("requested_formats") or []
-    for fmt in requested_formats:
-        if not isinstance(fmt, dict):
-            continue
-        fmt_url = fmt.get("url")
-        if isinstance(fmt_url, str) and is_valid_https_url(fmt_url):
-            return fmt_url
+        for key in ("requested_formats", "formats"):
+            for fmt in info.get(key) or []:
+                if not isinstance(fmt, dict):
+                    continue
+                fmt_url = fmt.get("url")
+                if isinstance(fmt_url, str) and is_valid_https_url(fmt_url):
+                    yield fmt
 
-    formats = info.get("formats") or []
-    for fmt in formats:
-        if not isinstance(fmt, dict):
-            continue
-        fmt_url = fmt.get("url")
-        if not (isinstance(fmt_url, str) and is_valid_https_url(fmt_url)):
-            continue
-
+    for fmt in iter_valid_format_dicts():
         has_video = fmt.get("vcodec") not in (None, "none")
         has_audio = fmt.get("acodec") not in (None, "none")
-        if selected_format == "mp3" and has_audio and not has_video:
-            return fmt_url
-        if selected_format != "mp3" and has_audio and has_video:
-            return fmt_url
+        ext = (fmt.get("ext") or "").lower()
+
+        if selected_format == "mp3":
+            if has_audio and not has_video and ext in {"m4a", "mp3", "aac", "webm", "ogg", "opus"}:
+                return fmt["url"]
+        else:
+            if has_audio and has_video and ext in {"mp4", "webm", "mkv"}:
+                return fmt["url"]
 
     return None
 
