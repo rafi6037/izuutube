@@ -173,9 +173,12 @@ def download():
 
     try:
         start_time = parse_optional_seconds(data.get("stime"), "stime")
+    except ValueError:
+        return jsonify({"error": "Invalid stime. Use integer seconds and ensure value is >= 0."}), 400
+    try:
         end_time = parse_optional_seconds(data.get("etime"), "etime")
     except ValueError:
-        return jsonify({"error": "Invalid stime/etime. Use integer seconds and ensure values are >= 0."}), 400
+        return jsonify({"error": "Invalid etime. Use integer seconds and ensure value is >= 0."}), 400
     if start_time is not None and end_time is not None and end_time <= start_time:
         return jsonify({"error": "etime must be greater than stime"}), 400
 
