@@ -2,7 +2,7 @@ import os
 import logging
 import requests
 import yt_dlp
-from yt_dlp.utils import DownloadError
+from yt_dlp.utils import YoutubeDLError
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -152,7 +152,7 @@ def get_fallback_download_link(url, selected_format):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-    except DownloadError as e:
+    except YoutubeDLError as e:
         logger.warning("[IzuTube] yt-dlp extraction failed: %s", e)
         return None
 
@@ -178,7 +178,7 @@ def get_fallback_download_link(url, selected_format):
         ext = (fmt.get("ext") or "").lower()
 
         if selected_format == "mp3":
-            if has_audio and not has_video and ext in {"m4a", "mp3", "aac", "webm", "ogg", "opus"}:
+            if has_audio and not has_video and ext in {"m4a", "mp3", "aac", "opus"}:
                 return fmt["url"]
         else:
             if has_audio and has_video and ext in {"mp4", "webm", "mkv"}:
