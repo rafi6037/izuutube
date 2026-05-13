@@ -1,50 +1,24 @@
-# YTDL — YouTube Downloader
+# IzuTube (Frontend Only)
 
-A clean, fast YouTube downloader web app built with Flask + yt-dlp.
+This project is now a static frontend app.
 
-## Deploy to Railway (5 minutes)
+It directly uses:
 
-### Step 1 — Push to GitHub
-```bash
-git init
-git add .
-git commit -m "initial commit"
-gh repo create ytdl-app --public --push
-# or manually push to a GitHub repo
-```
+`https://apisyu.com/single/{TYPE}/{VIDEO_ID}`
 
-### Step 2 — Deploy on Railway
-1. Go to [railway.app](https://railway.app) → **New Project**
-2. Select **Deploy from GitHub repo** → pick your repo
-3. Railway auto-detects `nixpacks.toml` and installs Python + ffmpeg
-4. Your app is live in ~2 minutes!
+with optional query parameters:
+- `audio` (default `320`)
+- `theme` (example `dark`)
+- `lang` (default `English`)
 
-### Step 3 — Use it
-- Open your Railway URL
-- Paste any YouTube link → click **Fetch**
-- Pick MP3 or video quality (360p → 1080p)
-- Click **Download** → file saves to your device
+## Deploy to Vercel
 
-## Local Development
+1. Push this repository to GitHub.
+2. Import the repository in [Vercel](https://vercel.com/new).
+3. Deploy with default settings.
 
-```bash
-# Install ffmpeg (required)
-# macOS: brew install ffmpeg
-# Ubuntu: sudo apt install ffmpeg
+No backend, runtime, or build step is required.
 
-pip install -r requirements.txt
-python app.py
-# Open http://localhost:8000
-```
+## Local usage
 
-## Tech Stack
-- **Backend**: Python Flask + yt-dlp
-- **Frontend**: Vanilla HTML/CSS/JS (no build step)
-- **Deployment**: Railway with nixpacks (auto-installs ffmpeg)
-- **Timeout**: 300s — handles long videos fine
-
-## Notes
-- Files are auto-deleted from server after 5 minutes
-- MP3 exports at 320kbps
-- Video merges best available video + audio into MP4
-- For restricted videos, set `COOKIES_CONTENT` in Railway. Both Netscape cookie file content and JSON cookie exports are supported.
+Open `index.html` in a browser and use the form to generate/open download links.
