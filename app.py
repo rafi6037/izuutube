@@ -151,7 +151,8 @@ def get_fallback_download_link(url, selected_format):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-    except Exception:
+    except Exception as e:
+        logger.warning("[IzuTube] yt-dlp extraction failed: %s", e)
         return None
 
     if not isinstance(info, dict):
@@ -277,12 +278,9 @@ def download():
         logger.exception("[IzuTube] Unexpected error while fetching download link")
         return jsonify({"error": "Failed to get download link"}), 500
 
-    try:
-        fallback_url = get_fallback_download_link(url, selected_format)
-        if fallback_url:
-            return jsonify({"url": fallback_url, "download": fallback_url})
-    except Exception as e:
-        logger.warning("[IzuTube] yt-dlp fallback download link failed: %s", e)
+    fallback_url = get_fallback_download_link(url, selected_format)
+    if fallback_url:
+        return jsonify({"url": fallback_url, "download": fallback_url})
 
     return jsonify({"error": provider_error_message or "Failed to get download link"}), 502
 
