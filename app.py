@@ -162,7 +162,7 @@ def download():
     """Fetch a download link from yt2mp3converter."""
     data = request.json or {}
     url = data.get("url", "").strip()
-    selected_format = str(data.get("format", "mp3")).strip().lower() or "mp3"
+    selected_format = str(data.get("format", "mp3")).strip().lower()
 
     if not url:
         return jsonify({"error": "No URL provided"}), 400
