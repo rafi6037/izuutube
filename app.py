@@ -211,13 +211,13 @@ def download():
         text = res.text.strip()
         if is_valid_https_url(text):
             return jsonify({"url": text, "download": text})
-        return jsonify({"error": "Unexpected response from MP3 provider"}), 502
+        return jsonify({"error": "Unexpected response from download provider"}), 502
     except requests.RequestException as e:
-        logger.warning("[IzuTube] MP3 provider request failed: %s", e)
-        return jsonify({"error": "Failed to contact MP3 provider"}), 502
+        logger.warning("[IzuTube] Download provider request failed: %s", e)
+        return jsonify({"error": "Failed to contact download provider"}), 502
     except Exception:
-        logger.exception("[IzuTube] Unexpected error while fetching MP3 link")
-        return jsonify({"error": "Failed to get MP3 download link"}), 500
+        logger.exception("[IzuTube] Unexpected error while fetching download link")
+        return jsonify({"error": "Failed to get download link"}), 500
 
 
 if __name__ == "__main__":
