@@ -174,8 +174,8 @@ def download():
     try:
         start_time = parse_optional_seconds(data.get("stime"), "stime")
         end_time = parse_optional_seconds(data.get("etime"), "etime")
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+    except ValueError:
+        return jsonify({"error": "Invalid stime/etime. Use integer seconds and ensure values are >= 0."}), 400
     if start_time is not None and end_time is not None and end_time <= start_time:
         return jsonify({"error": "etime must be greater than stime"}), 400
 
@@ -206,7 +206,7 @@ def download():
                             response_payload[key] = value
                 return jsonify(response_payload)
             message = payload.get("error") if isinstance(payload, dict) else None
-            return jsonify({"error": message or "Failed to get MP3 download link"}), 502
+            return jsonify({"error": message or "Failed to get download link"}), 502
 
         text = res.text.strip()
         if is_valid_https_url(text):
